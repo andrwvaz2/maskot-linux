@@ -93,12 +93,19 @@ ID_QUIT = 2
 
 
 class Tray:
-    """Ícono SNI con menú de dos entradas: Ocultar/Mostrar y Salir."""
+    """Ícono SNI con menú: visibilidad, pomodoro, rutinas, personaje y API.
 
-    def __init__(self, on_toggle=None, on_quit=None):
+    La estructura del menú la pide al controlador (`app.menu_model()`), que
+    devuelve una lista de entradas `{"id", "label", "children", "checked"}`.
+    Así el menú puede anidar submenús sin que este archivo sepa de la mascota.
+    """
+
+    def __init__(self, app=None, on_toggle=None, on_quit=None):
+        self.app = app
         self.on_toggle = on_toggle
         self.on_quit = on_quit
         self.visible = True
+        self.revision = 1
 
         self.connection = None
         self.unique_name = None
@@ -177,10 +184,16 @@ class Tray:
     # -- interfaz org.kde.StatusNotifierItem --------------------------------
 
     def _get_prop_item(self, connection, sender, object_path, interface, prop):
+        titulo = "Mascota"
+        if self.app is not None:
+            try:
+                titulo = self.app.pomodoro.texto_tooltip()
+            except Exception:  # noqa: BLE001
+                titulo = "Mascota"
         props = {
             "Category": GLib.Variant("s", "ApplicationStatus"),
             "Id": GLib.Variant("s", "mascota"),
-            "Title": GLib.Variant("s", "Mascota"),
+            "Title": GLib.Variant("s", titulo),
             "Status": GLib.Variant("s", "Active"),
             "IconName": GLib.Variant("s", "face-smile"),
             "IconThemePath": GLib.Variant("s", ""),
@@ -242,48 +255,115 @@ class Tray:
                 f"método desconocido: {method}",
             )
 
-    def _make_item(self, item_id, props):
-        # Elemento de menú como GLib.Variant (ia{sv}av); se usa como hijo en
-        # el árbol (el tipo `av` requiere Variants ya envueltos).
-        return GLib.Variant("(ia{sv}av)", (item_id, props, []))
+    def _make_item(self, item_id, entrada):
+        """Convierte una entrada del modelo en un item dbusmenu."""
+        props = {
+            "label": GLib.Variant("s", entrada.get("label", "")),
+            "enabled": GLib.Variant("b", True),
+            "visible": GLib.Variant("b", True),
+        }
+        hijos = entrada.get("children") or []
+        if entrada.get("checked") is not None:
+            props["toggle-state"] = GLib.Variant(
+                "i", 1 if entrada.get("checked") else 0
+            )
+            props["toggle-type"] = GLib.Variant("i", 1)   # checkmark
+        hijos_var = [self._make_item(h["id"], h) for h in hijos]
+        return GLib.Variant("(ia{sv}av)", (item_id, props, hijos_var))
+
+    def _model(self):
+        if self.app is None:
+            return [
+                {"id": ID_TOGGLE, "label": "Ocultar" if not self.visible else "Mostrar"},
+                {"id": ID_QUIT, "label": "Salir"},
+            ]
+        try:
+            return self.app.menu_model()
+        except Exception as exc:  # noqa: BLE001
+            print(f"[tray] no se pudo construir el menú: {exc}")
+            return [{"id": ID_QUIT, "label": "Salir"}]
 
     def _build_layout(self):
-        """Devuelve el layout como lista con un único elemento (la raíz).
+        """Layout dbusmenu: la raíz con todos los elementos de primer nivel.
 
         La raíz es una tupla cruda (0, {}, [hijos]) porque `a(ia{sv}av)` espera
         tuplas, mientras que los hijos ya son GLib.Variant (requerido por `av`).
         """
-        label_toggle = "Ocultar" if self.visible else "Mostrar"
-        item_toggle = self._make_item(ID_TOGGLE, {
-            "label": GLib.Variant("s", label_toggle),
-            "enabled": GLib.Variant("b", True),
-        })
-        item_quit = self._make_item(ID_QUIT, {
-            "label": GLib.Variant("s", "Salir"),
-            "enabled": GLib.Variant("b", True),
-        })
-        root = (0, {}, [item_toggle, item_quit])
+        items = [self._make_item(e["id"], e) for e in self._model()]
+        root = (0, {}, items)
         return [root]
+
+    def _buscar(self, item_id, entradas=None):
+        for entrada in (entradas if entradas is not None else self._model()):
+            if entrada["id"] == item_id:
+                return entrada
+            hijo = self._buscar(item_id, entrada.get("children") or [])
+            if hijo is not None:
+                return hijo
+        return None
 
     def _menu_prop(self, item_id, name):
         if name == "enabled":
             return GLib.Variant("b", True)
-        if item_id == ID_TOGGLE:
-            label = "Ocultar" if self.visible else "Mostrar"
-        elif item_id == ID_QUIT:
-            label = "Salir"
-        else:
+        if name == "visible":
+            return GLib.Variant("b", True)
+        entrada = self._buscar(item_id)
+        if entrada is None:
             return GLib.Variant("s", "")
-        return GLib.Variant("s", label)
+        if name == "label":
+            return GLib.Variant("s", entrada.get("label", ""))
+        if name == "toggle-state":
+            return GLib.Variant("i", 1 if entrada.get("checked") else 0)
+        if name == "toggle-type":
+            return GLib.Variant("i", 1)
+        return GLib.Variant("s", "")
 
     def _handle_event(self, item_id, event):
+        if event == "open":          # el host abrió un submenú: nada que hacer
+            return
         if event != "clicked":
             return
         if item_id == ID_TOGGLE:
             self._toggle()
-        elif item_id == ID_QUIT:
+            self.refrescar()
+            return
+        if item_id == ID_QUIT:
             if self.on_quit:
                 self.on_quit()
+            return
+        entrada = self._buscar(item_id)
+        if entrada is not None and entrada.get("children"):
+            return          # los padres de submenú no ejecutan nada
+        if self.app is not None:
+            self.app.on_menu(item_id)
+
+    def refrescar(self):
+        """Avisa al host de que el menú y el tooltip han cambiado."""
+        if self.connection is None:
+            return
+        self.revision += 1
+        try:
+            self.connection.emit_signal(
+                None, "/MenuBar", "com.canonical.dbusmenu",
+                "LayoutUpdated", GLib.Variant("(u)", (self.revision,)),
+            )
+        except Exception:  # noqa: BLE001
+            pass
+        try:
+            titulo = "Mascota"
+            if self.app is not None:
+                titulo = self.app.pomodoro.texto_tooltip()
+            self.connection.emit_signal(
+                None, "/StatusNotifierItem",
+                "org.freedesktop.DBus.Properties", "PropertiesChanged",
+                GLib.Variant("(sa{sv}as)", (
+                    "org.kde.StatusNotifierItem",
+                    {"Title": GLib.Variant("s", titulo)},
+                    [],
+                )),
+            )
+        except Exception:  # noqa: BLE001
+            pass
 
     # -- acciones -----------------------------------------------------------
 

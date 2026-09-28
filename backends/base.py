@@ -34,21 +34,32 @@ class Backend:
         conviene aplicar con la ventana ya visible.
         """
 
-    def set_input_region(self, rect):
+    def set_input_region(self, rects):
         """Actualiza la región donde la ventana recibe el puntero.
 
-        `rect` es (x, y, w, h) en coordenadas de la ventana, o `None` para
-        vaciar la región (click-through total). Se llama cada vez que el
-        sprite se mueve.
+        `rects` es un rectángulo (x, y, w, h), una lista de rectángulos, o
+        `None` para vaciar la región (click-through total). Se llama cada vez
+        que se mueve el sprite o el globo, así que la ventana solo recibe
+        puntero justo encima de lo que se ve.
         """
         surface = self.window.get_surface()
         if surface is None:
             return
-        if rect is None:
+        if rects is None:
             region = cairo.Region()  # región vacía -> el clic atraviesa
         else:
-            x, y, w, h = rect
-            region = cairo.Region(cairo.RectangleInt(int(x), int(y), int(w), int(h)))
+            if isinstance(rects[0], int):   # un solo rectángulo
+                rects = [rects]
+            # Ojo: cairo.Region.union() MUTA la región y devuelve None.
+            region = cairo.Region()
+            for x, y, w, h in rects:
+                if w <= 0 or h <= 0:
+                    continue
+                region.union(
+                    cairo.Region(
+                        cairo.RectangleInt(int(x), int(y), int(w), int(h))
+                    )
+                )
         surface.set_input_region(region)
 
     def cleanup(self):

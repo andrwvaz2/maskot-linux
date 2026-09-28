@@ -19,6 +19,10 @@ PALETTE_BASE = {
     "K": (0.13, 0.12, 0.16),   # contorno (casi negro)
     "B": (0.04, 0.04, 0.07),   # ojos
     "P": (0.96, 0.52, 0.58),   # boca / rubor (rosa)
+    "C": (0.13, 0.12, 0.16),   # ojos cerrados (línea)
+    "D": (0.04, 0.04, 0.07),   # ojos felices (arco)
+    "E": (0.04, 0.04, 0.07),   # ojos de "pensar" (medio cerrados)
+    "Z": (0.75, 0.80, 0.95),   # "Zzz" de la siesta
 }
 
 # Colores del cuerpo disponibles; se alternan al hacer clic.
@@ -95,6 +99,175 @@ FRAME_JUMP = (
 
 # Secuencia de caminata: se alterna A/B/A/B... para dar la ilusión de paso.
 FRAMES_WALK = (FRAME_WALK_A, FRAME_WALK_B)
+
+# ---------------------------------------------------------------------------
+# Frames añadidos en la fase 2 (rutinas). Los de arriba no se tocan.
+# ---------------------------------------------------------------------------
+
+# Siesta: sentado, ojos cerrados y "Z" flotando. Se usa a 5 FPS.
+FRAME_SIESTA = (
+    "................",
+    "................",
+    "................",
+    "....KKKKKKKK....",
+    "...KOOOOOOOOK...",
+    "..KOOOOOOOOOOK..",
+    "..KOCCCCCCCOOK..",
+    "..KOOOOOOOOOOK..",
+    "..KOOOPPPPOOOK..",
+    "..KOOOOOOOOOOK..",
+    "...KOOOOOOOOK...",
+    "....KKKKKKKK....",
+    "...K........K...",
+    "..KKK......KKK..",
+    "................",
+    "................",
+)
+
+# Siesta con "Zzz" en la esquina superior derecha.
+FRAME_SIESTA_Z = (
+    "............ZZ..",
+    "................",
+    "..........ZZ....",
+    "....KKKKKKKK....",
+    "...KOOOOOOOOK...",
+    "..KOOOOOOOOOOK..",
+    "..KOCCCCCCCOOK..",
+    "..KOOOOOOOOOOK..",
+    "..KOOOPPPPOOOK..",
+    "..KOOOOOOOOOOK..",
+    "...KOOOOOOOOK...",
+    "....KKKKKKKK....",
+    "...K........K...",
+    "..KKK......KKK..",
+    "................",
+    "................",
+)
+
+# Leer: sentado, mirando hacia abajo (ojos de "pensar") y con la boca pequeña.
+FRAME_LEER = (
+    "................",
+    "................",
+    "....KKKKKKKK....",
+    "...KOOOOOOOOK...",
+    "..KOOOOOOOOOOK..",
+    "..KOEEEEEEEEOOK.",
+    "..KOOOOOOOOOOK..",
+    "..KOOKKKKKKOOOK.",
+    "..KOOOOOOOOOOK..",
+    "...KOOOOOOOOK...",
+    "....KKKKKKKK....",
+    "...K........K...",
+    "..KKK......KKK..",
+    "................",
+    "................",
+    "................",
+)
+
+# Echar código: más intenso, cejas arriba y boca de concentración.
+FRAME_CODIGO = (
+    "................",
+    "................",
+    "....KKKKKKKK....",
+    "...KOOOOOOOOK...",
+    "..KOOOOOOOOOOK..",
+    "..KOOBBOOBBOOK..",
+    "..KOOOOOOOOOOK..",
+    "..KOOOOOOOOOOK..",
+    "..KOOKPPPPKOOOK.",
+    "...KOOOOOOOOK...",
+    "....KKKKKKKK....",
+    "...K........K...",
+    "..KKK......KKK..",
+    "................",
+    "................",
+    "................",
+)
+
+# Estiramiento (pausa activa): brazos arriba.
+FRAME_ESTIRAR = (
+    "................",
+    "..K..........K..",
+    "..KK........KK..",
+    "...K........K...",
+    "....KKKKKKKK....",
+    "...KOOOOOOOOK...",
+    "..KOOOOOOOOOOK..",
+    "..KOOBBOOBBOOK..",
+    "..KOOOOOOOOOOK..",
+    "..KOOOPPPPOOOK..",
+    "..KOOOOOOOOOOK..",
+    "...KOOOOOOOOK...",
+    "....KKKKKKKK....",
+    "..KKK......KKK..",
+    "................",
+    "................",
+)
+
+# Caras para la acción `cara(...)`: se muestran de pie un momento.
+FRAME_CARA_FELIZ = (
+    "................",
+    "................",
+    "....KKKKKKKK....",
+    "...KOOOOOOOOK...",
+    "..KOOOOOOOOOOK..",
+    "..KODDDDOODDOK..",
+    "..KOOOOOOOOOOK..",
+    "..KOOOPPPPOOOK..",
+    "..KOOOOOOOOOOK..",
+    "...KOOOOOOOOK...",
+    "....KKKKKKKK....",
+    ".....K....K.....",
+    ".....K....K.....",
+    ".....K....K.....",
+    "................",
+    "................",
+)
+
+FRAME_CARA_CANSADO = (
+    "................",
+    "................",
+    "....KKKKKKKK....",
+    "...KOOOOOOOOK...",
+    "..KOOOOOOOOOOK..",
+    "..KOCCCCCCCOOK..",
+    "..KOOOOOOOOOOK..",
+    "..KOOOOOOOOOOK..",
+    "..KOOKKKKKKOOK..",
+    "...KOOOOOOOOK...",
+    "....KKKKKKKK....",
+    ".....K....K.....",
+    ".....K....K.....",
+    ".....K....K.....",
+    "................",
+    "................",
+)
+
+FRAME_CARA_PENSAR = (
+    "................",
+    "................",
+    "....KKKKKKKK....",
+    "...KOOOOOOOOK...",
+    "..KOOOOOOOOOOK..",
+    "..KOOOOOOOOOOK..",
+    "..KOOBBOOOOOOK..",
+    "..KOOOOOOOOOOK..",
+    "..KOOKKKPPKOOOK.",
+    "...KOOOOOOOOK...",
+    "....KKKKKKKK....",
+    ".....K....K.....",
+    ".....K....K.....",
+    ".....K....K.....",
+    "................",
+    "................",
+)
+
+# Mapa de nombres de cara -> frame (para la acción `cara`).
+FRAMES_CARA = {
+    "feliz": FRAME_CARA_FELIZ,
+    "cansado": FRAME_CARA_CANSADO,
+    "pensar": FRAME_CARA_PENSAR,
+}
 
 GRID_SIZE = 16
 

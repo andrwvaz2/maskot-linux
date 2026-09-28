@@ -1,2 +1,34 @@
+# Solo código fuente en el repo: aquí no deben acabar los ficheros que genera
+# la app en tiempo de ejecución ni los de mis pruebas.
+#
+# Python
 __pycache__/
 *.py[cod]
+*$py.class
+
+# Preferencias y estado (la app escribe en ~/.config/mascota/, pero por si
+# alguien apunta RUTA_POR_DEFECTO dentro del repo)
+prefs.json
+*.tmp
+
+# Logs y salidas de pruebas
+*.log
+capturas/
+*.png
+
+# Core dumps: el self-test de ext-idle-notify-v1 (pausa.py --selftest) provoca
+# un fallo de segmentación a propósito como detector; según el core_pattern del
+# kernel el fichero puede aparecer en el directorio de trabajo.
+core
+core.*
+
+# Entornos y editores
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.vscode/
+.idea/
+*.swp
+*~
