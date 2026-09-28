@@ -182,3 +182,17 @@ mascota/
     ├── wayland.py    # gtk4-layer-shell + fallback
     └── x11.py        # EWMH + XMoveWindow con ctypes
 ```
+
+## Créditos
+
+Este repositorio es una **implementación independiente para Linux** (Python +
+GTK4). Está **inspirado en** [alecap92/maskot-mac](https://github.com/alecap92/maskot-mac)
+— una mascota de escritorio para macOS escrita en Swift.
+
+- **No es un fork**: no se ha copiado código de ese proyecto (distinto lenguaje
+  y plataforma), y este repo no aparece en su red de forks.
+- Si algún día se reutiliza código suyo, hay que mantener su licencia MIT y la
+  atribución.
+
+Licencia de este repositorio: la que elijas al publicarlo (aún no declarada).
+
