@@ -29,7 +29,6 @@
 
 ---
 
-```
 
 ### 🎭 Elenco de Personajes (9 Mascotas Disponibles)
 Puedes cambiar de compañero en cualquier momento desde el submenú de la bandeja o mediante la API HTTP:
