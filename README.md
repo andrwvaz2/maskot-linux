@@ -147,8 +147,15 @@ Las preferencias se almacenan automáticamente en `~/.config/mascota/prefs.json`
 
 Maskot incluye un instalador interactivo [install.sh](file:///home/andrw/mascota/install.sh) que detecta automáticamente tu gestor de paquetes, instala dependencias e inyecta las reglas de ventana necesarias para tu compositor o entorno:
 
+### Opción A — Un solo comando (One-Liner vía curl):
 ```bash
-# Instalador interactivo automático (detecta tu distro y entorno)
+curl -sSL https://raw.githubusercontent.com/andrwvaz2/maskot-linux/main/install.sh | bash
+```
+
+### Opción B — Clonando el repositorio:
+```bash
+git clone https://github.com/andrwvaz2/maskot-linux.git
+cd maskot-linux
 ./install.sh
 ```
 

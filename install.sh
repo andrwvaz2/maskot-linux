@@ -17,7 +17,22 @@ CYAN='\033[0;36m'
 BOLD='\033[1m'
 NC='\033[0m' # No Color
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Determinar directorio de origen o clonar si se ejecuta vía pipe/curl
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" >/dev/null 2>&1 && pwd || pwd)"
+
+if [[ ! -f "${SCRIPT_DIR}/run.sh" ]]; then
+    REPO_URL="https://github.com/andrwvaz2/maskot-linux.git"
+    INSTALL_DIR="${HOME}/.local/share/maskot"
+    echo -e "${CYAN}▶${NC} No se detectó el código fuente en la carpeta actual."
+    echo -e "${CYAN}▶${NC} Descargando Maskot en ${BOLD}${INSTALL_DIR}${NC}..."
+    if [[ -d "$INSTALL_DIR" ]]; then
+        git -C "$INSTALL_DIR" pull --quiet 2>/dev/null || true
+    else
+        git clone --depth 1 "$REPO_URL" "$INSTALL_DIR"
+    fi
+    SCRIPT_DIR="$INSTALL_DIR"
+fi
+
 BIN_DIR="${HOME}/.local/bin"
 APPS_DIR="${HOME}/.local/share/applications"
 ICONS_DIR="${HOME}/.local/share/icons/hicolor/scalable/apps"
@@ -30,12 +45,27 @@ ARG_DEPS=""
 ARG_UNINSTALL=0
 
 # ------------------------------------------------------------------------------
-# Mensajes de estado
+# Mensajes de estado y entrada
 # ------------------------------------------------------------------------------
 log_info()  { echo -e "${CYAN}▶${NC} $*"; }
 log_ok()    { echo -e "${GREEN}✔${NC} $*"; }
 log_warn()  { echo -e "${YELLOW}▲ AVISO:${NC} $*"; }
 log_err()   { echo -e "${RED}✖ ERROR:${NC} $*" >&2; }
+
+prompt_input() {
+    local text="$1"
+    local def="${2:-}"
+    local val=""
+
+    if [ -t 0 ]; then
+        read -rp "$text" val
+    elif [ -e /dev/tty ]; then
+        read -rp "$text" val < /dev/tty 2>/dev/null || val="$def"
+    else
+        val="$def"
+    fi
+    echo "${val:-$def}"
+}
 
 print_banner() {
     echo -e "${PURPLE}"
@@ -246,8 +276,7 @@ install_dependencies() {
         echo -e "Comando recomendado para tu distribución (${BOLD}${pm}${NC}):"
         echo -e "  ${CYAN}${cmd}${NC}"
         echo ""
-        read -rp "¿Deseas ejecutar este comando ahora con sudo? [S/n]: " resp
-        resp="${resp:-s}"
+        resp="$(prompt_input "¿Deseas ejecutar este comando ahora con sudo? [S/n]: " "s")"
         if [[ "$resp" =~ ^[sSyY]$ ]]; then
             do_install=1
         fi
@@ -353,8 +382,7 @@ select_wm_interactive() {
         xfce) def_num="8" ;;
     esac
 
-    read -rp "Selecciona tu entorno [1-9, defecto detectado=$def_num]: " choice
-    choice="${choice:-$def_num}"
+    choice="$(prompt_input "Selecciona tu entorno [1-9, defecto detectado=$def_num]: " "$def_num")"
 
     case "$choice" in
         1) echo "niri" ;;
@@ -588,8 +616,7 @@ setup_autostart() {
         enable_auto=0
     else
         echo ""
-        read -rp "¿Deseas que Maskot se inicie automáticamente al encender tu PC? [S/n]: " resp
-        resp="${resp:-s}"
+        resp="$(prompt_input "¿Deseas que Maskot se inicie automáticamente al encender tu PC? [S/n]: " "s")"
         if [[ "$resp" =~ ^[sSyY]$ ]]; then
             enable_auto=1
         fi
