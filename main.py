@@ -32,6 +32,7 @@ gi.require_version("Gdk", "4.0")
 from gi.repository import Gdk, GLib, Gtk  # noqa: E402
 
 import objetos  # noqa: E402
+import personajes  # noqa: E402
 import sprite as sp  # noqa: E402
 from api import ApiLocal  # noqa: E402
 from backends import X11Backend, WaylandBackend  # noqa: E402
@@ -143,12 +144,11 @@ class Mascota:
         self._ultimo_snapshot_ms = 0
         self._ultimo_globo_ms = 0
 
-        # personaje (color del cuerpo) elegido en preferencias
+        # personaje elegido en preferencias
         self._aplicar_personaje(self.prefs.personaje)
 
     def _aplicar_personaje(self, nombre):
-        if nombre in PERSONAJES:
-            self.sprite.body_index = PERSONAJES.index(nombre)
+        self.sprite.set_personaje(nombre)
 
     # ------------------------------------------------------------------ setup
 
@@ -314,7 +314,7 @@ class Mascota:
         # 2) El sprite, con la pose que toque ahora mismo.
         frame = self.motor.frame_actual(self._frame_paseo())
         if self.pose_extra == "estirar":
-            frame = sp.FRAME_ESTIRAR
+            frame = self.sprite.frame_estirar
         self.sprite.draw(cr, frame)
 
         # 3) El globo de texto encima.
@@ -322,8 +322,8 @@ class Mascota:
 
     def _frame_paseo(self):
         if self.state == "jump":
-            return sp.FRAME_JUMP
-        return sp.FRAMES_WALK[self.walk_frame]
+            return self.sprite.frame_jump
+        return self.sprite.frame_walk(self.walk_frame)
 
     def on_tray_toggle(self, visible):
         self.window.set_visible(visible)
@@ -414,7 +414,6 @@ class Mascota:
         if self.jump_t >= 1.0:
             self.state = "walk"
             self.sprite.y = self._ground_y()
-            self.sprite.body_index += 1
             self.walk_frame = 0
             self.walk_tick = 0
         else:
@@ -455,10 +454,12 @@ class Mascota:
         ]
         rut_items.append({"id": ID_RUT_ALEATORIA, "label": "Elegir al azar"})
         pers_items = [
-            {"id": ID_PERSONAJE_BASE + i, "label": n.capitalize(),
+            {"id": ID_PERSONAJE_BASE + i,
+             "label": f"{personajes.get_personaje(n).nombre} ({personajes.get_personaje(n).desc})",
              "checked": self.prefs.personaje == n}
             for i, n in enumerate(PERSONAJES)
         ]
+        p_act = personajes.get_personaje(self.prefs.personaje)
         return [
             {"id": ID_TOGGLE, "label": "Ocultar" if self.tray.visible else "Mostrar"},
             {"id": ID_POM_ESTADO, "label": p.texto_menu(), "children": pom_items},
@@ -467,7 +468,7 @@ class Mascota:
                       f"{f' ({rutina['paso']})' if rutina['paso'] else ''}",
              "children": rut_items},
             {"id": ID_PERSONAJE_ESTADO,
-             "label": f"Personaje: {self.prefs.personaje}", "children": pers_items},
+             "label": f"Personaje: {p_act.nombre}", "children": pers_items},
             {"id": ID_API,
              "label": f"API local: {'desactivar' if self.api.activo else 'activar'}"},
             {"id": ID_POMODORO_PAUSA,
@@ -516,7 +517,9 @@ class Mascota:
                 self._aplicar_personaje(nombre)
                 self.prefs.personaje = nombre
                 self.prefs.guardar()
-                print(f"[mascota] personaje -> {nombre}")
+                p = personajes.get_personaje(nombre)
+                self.globo.mostrar(f"¡Hola! Soy {p.nombre}", 2500)
+                print(f"[mascota] personaje -> {p.nombre} ({p.id})")
                 self.on_cambio()
                 return
         if item_id == ID_API:
@@ -598,6 +601,11 @@ class Mascota:
         if accion == "pomodoro" and datos.get("formato") not in (None, *FORMATOS):
             return 400, {"error": f"formato desconocido: {datos.get('formato')!r}",
                          "formatos": list(FORMATOS)}
+        if accion == "personaje":
+            nombre = str(datos.get("nombre", "")).lower().strip()
+            if nombre not in PERSONAJES and nombre not in personajes.ALIAS_LEGACY:
+                return 400, {"error": f"personaje desconocido: {nombre!r}",
+                             "personajes": list(PERSONAJES)}
         self._cola_api.put((accion, dict(datos or {})))
         GLib.idle_add(self._procesar_cola_api)
         return 202, {"ok": True, "encolado": accion}
@@ -630,6 +638,14 @@ class Mascota:
                 print(f"[api] rutina desconocida: {nombre!r}")
         elif accion == "pomodoro":
             self._accion_pomodoro(datos)
+        elif accion == "personaje":
+            nombre = str(datos.get("nombre", "")).lower().strip()
+            self._aplicar_personaje(nombre)
+            self.prefs.personaje = nombre
+            self.prefs.guardar()
+            p = personajes.get_personaje(nombre)
+            self.globo.mostrar(f"¡Cambiado a {p.nombre}!", 2500)
+            print(f"[api] personaje -> '{p.nombre}'")
         self.on_cambio()
 
     def _accion_pomodoro(self, datos):

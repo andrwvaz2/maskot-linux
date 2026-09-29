@@ -99,6 +99,7 @@ class ApiLocal:
                     "/decir": "decir",
                     "/rutina": "rutina",
                     "/pomodoro": "pomodoro",
+                    "/personaje": "personaje",
                 }
                 accion = acciones.get(ruta)
                 if accion is None:

@@ -12,18 +12,19 @@ import datetime
 import json
 import os
 
+import personajes
+
 RUTA_POR_DEFECTO = os.path.join(
     os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config"),
     "mascota",
     "prefs.json",
 )
 
-# Personaje -> color del cuerpo. Los nombres coinciden con BODY_COLORS de
-# sprite.py en orden: naranja, verde, violeta, rosa.
-PERSONAJES = ("naranja", "verde", "violeta", "rosa")
+# Lista completa de personajes disponibles
+PERSONAJES = personajes.LISTA_PERSONAJES
 
 DEFAULTS = {
-    "personaje": "naranja",
+    "personaje": "tux",
     "dias_uso": 0,
     "ultimo_dia": "",
     "formato_pomodoro": "25/5",
@@ -80,12 +81,14 @@ class Preferencias:
 
     @property
     def personaje(self):
-        return self.get("personaje")
+        val = self.get("personaje")
+        p = personajes.get_personaje(val)
+        return p.id
 
     @personaje.setter
     def personaje(self, nombre):
-        if nombre in PERSONAJES:
-            self.datos["personaje"] = nombre
+        p = personajes.get_personaje(nombre)
+        self.datos["personaje"] = p.id
 
     @property
     def dias_uso(self):

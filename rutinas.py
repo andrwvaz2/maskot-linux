@@ -308,7 +308,7 @@ class MotorRutinas:
                 return
             if tipo == "cara":
                 nombre = accion.get("nombre", "feliz")
-                if nombre in sp.FRAMES_CARA:
+                if self.pet.sprite.tiene_cara(nombre) or nombre in sp.FRAMES_CARA:
                     self.cara_actual = nombre
                     self.cara_ms = accion.get("ms", 2000)
                 self.accion_ms = accion.get("ms", 2000)
@@ -398,16 +398,17 @@ class MotorRutinas:
 
     def frame_actual(self, walk_frame):
         """Devuelve el frame que toca dibujar ahora mismo."""
+        sp = self.pet.sprite
         if self.cara_actual:
-            return sp.FRAMES_CARA[self.cara_actual]
+            return sp.frame_cara(self.cara_actual)
         if self.pose == "siesta":
-            return FRAME_SIESTA_Z if self._medio_tick() else FRAME_SIESTA
+            return sp.frame_siesta_z if self._medio_tick() else sp.frame_siesta
         if self.pose == "leer":
-            return FRAME_LEER
+            return sp.frame_leer
         if self.pose == "codigo":
-            return FRAME_CODIGO
+            return sp.frame_codigo
         if self.en_salto:
-            return sp.FRAME_JUMP
+            return sp.frame_jump
         return walk_frame
 
     def _medio_tick(self):

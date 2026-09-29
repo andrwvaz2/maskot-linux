@@ -46,15 +46,20 @@
   └──────────────────────────────┴────────────────────────────────────────┘
 ```
 
-### 🎨 Paletas de Color Intercambiables
-Al hacer clic sobre el personaje o desde el menú de la bandeja, Maskot alterna entre 4 paletas clásicas:
+### 🎭 Elenco de Personajes (9 Mascotas Disponibles)
+Puedes cambiar de compañero en cualquier momento desde el submenú de la bandeja o mediante la API HTTP:
 
-| Paleta | Tono RGB | Descripción |
-|:---:|:---:|:---|
-| 🟧 **Ámbar / Naranja (Default)** | `(0.95, 0.58, 0.18)` | Cálido y enérgico |
-| 🟩 **Menta / Turquesa** | `(0.22, 0.72, 0.62)` | Relajante y fresco |
-| 🟪 **Amatista / Violeta** | `(0.62, 0.42, 0.86)` | Estilo nocturno y synthwave |
-| 🌸 **Rosa Pastel** | `(0.92, 0.50, 0.70)` | Suave y minimalista |
+| Mascota | Especie | Paleta Distintiva | Personalidad / Rol |
+|:---:|:---:|:---|:---|
+| 🐧 **Tux** *(Default)* | Pingüino | Carbón, Blanco y Amarillo `#F59E0B` | El legendario guardián de Linux |
+| 🦀 **Koru** | Cangrejo | Terracota `#F26A2E` y puntas azul claro | El explorador curioso del sistema |
+| 🧢 **Clawd** | Cangrejo | Terracota `#D97757` con gorra azul marino | El clásico deportivo con gorra hacia atrás |
+| 🦊 **Tuno** | Zorro | Naranja `#F58A2A`, crema y cian | El estratega creativo; encuentra atajos |
+| 🐢 **Nilo** | Tortuga | Verde `#A8DB55` y caparazón teal `#249CB8` | Confiable y constante; nunca falla |
+| 🐝 **Brio** | Abeja | Amarillo `#F5D338` y alas celestes | La ejecutora veloz y enfocada |
+| 🦉 **Luma** | Búho | Morado `#9B6AE3` y plumas azul cielo | La analista observadora de detalles |
+| 🦎 **Mako** | Gecko | Turquesa `#44D0CF` y verde lima | El ágil y adaptable; aprende rápido |
+| 🐙 **Orbi** | Pulpo | Coral `#F56B8A` y tentáculos lavanda | El integrador multitarea que conecta todo |
 
 ---
 
@@ -234,18 +239,22 @@ curl -s -X POST -d '{"nombre": "siesta"}' 127.0.0.1:7777/rutina
 # Controlar el Pomodoro
 curl -s -X POST -d '{"accion": "iniciar", "formato": "25/5"}' 127.0.0.1:7777/pomodoro
 curl -s -X POST -d '{"accion": "pausar"}' 127.0.0.1:7777/pomodoro
+
+# Cambiar de personaje (tux, koru, clawd, tuno, nilo, brio, luma, mako, orbi)
+curl -s -X POST -d '{"nombre": "tux"}' 127.0.0.1:7777/personaje
 ```
 
 ### Tabla de Endpoints
 
 | Método | Endpoint | Cuerpo JSON | Descripción |
 |:---:|---|---|---|
-| `GET` | `/estado` | — | Snapshot del estado: sprite, rutina, globo, pomodoro, pausa, color y días de uso |
+| `GET` | `/estado` | — | Snapshot del estado: sprite, rutina, globo, pomodoro, pausa, personaje y días de uso |
 | `GET` | `/rutinas` | — | Catálogo de rutinas y micro-acciones |
 | `POST` | `/aviso` | `{"texto": "..."}` | Globo rápido de advertencia (1.8 s) |
 | `POST` | `/decir` | `{"texto": "...", "ms": 3000}` | Mensaje con duración específica en ms |
 | `POST` | `/rutina` | `{"nombre": "siesta"}` | Interrumpe y ejecuta la rutina indicada |
 | `POST` | `/pomodoro` | `{"accion": "...", "formato": "..."}` | Iniciar, pausar, reanudar, saltar o parar el Pomodoro |
+| `POST` | `/personaje` | `{"nombre": "tux"}` | Cambia la mascota activa en tiempo real |
 
 ---
 
@@ -327,7 +336,8 @@ mascota/
 ├── pausa.py             # Máquina de estados de pausa activa y auto-test en Wayland
 ├── api.py               # Servidor HTTP local REST (127.0.0.1:7777) sin dependencias
 ├── preferencias.py      # Persistencia en disco (~/.config/mascota/prefs.json)
-├── sprite.py            # Grilla pixel art 16x16, paletas de color, poses y caras
+├── sprite.py            # Motor de renderizado Cairo, poses y animación
+├── personajes.py        # Catálogo de 9 personajes (Tux + Familia Koru)
 ├── tray.py              # Icono y menú en la bandeja del sistema vía DBus puro
 ├── run.sh               # Lanzador con detección de entorno y comprobación de libs
 ├── install.sh           # Instalador interactivo y configurador multi-WM/escritorios
@@ -345,11 +355,11 @@ mascota/
 
 ## 🏆 Créditos & Atribución
 
-Este proyecto es una **implementación original e independiente para Linux** escrita en Python y GTK4.
+Este proyecto es una **implementación original e independiente para Linux** escrita en Python y GTK4, inspirada en [alecap92/maskot-mac](https://github.com/alecap92/maskot-mac).
 
-Inspirado en la idea de [alecap92/maskot-mac](https://github.com/alecap92/maskot-mac) (mascota para macOS en Swift).
-- **No es un fork:** No comparte código ni dependencias; la arquitectura, backends de renderizado Wayland/X11, rutinas y motor HTTP han sido programados desde cero para el ecosistema Linux.
-- Si en el futuro se reutiliza código o arte de dicho proyecto, se mantendrá su licencia MIT y la atribución correspondiente.
+- **Diseños de personajes:** Los sprites y paletas de la Familia Koru (*Koru, Clawd, Tuno, Nilo, Brio, Luma, Mako, Orbi*) fueron adaptados de [alecap92/maskot-mac](https://github.com/alecap92/maskot-mac) bajo la **Licencia MIT** (*Copyright (c) 2026 alecap92*).
+- **Tux (Linux):** Diseño en pixel art 16×16 creado originalmente para esta versión nativa de Linux.
+- **Arquitectura:** Toda la base de código para Linux (servidor Wayland layer-shell, X11 EWMH, click-through en Cairo, menú DBus y API HTTP) ha sido escrita desde cero.
 
 ---
 
