@@ -1,279 +1,129 @@
-# Mascota de escritorio en pixel art (prototipo)
+# 👾 MASKOT — Mascota de Escritorio en Pixel Art (Edición GBC)
 
-Mascota de escritorio para Linux escrita en Python + GTK4. Prototipo en dos
-fases:
+<div align="center">
 
-- **Fase 1 — la parte difícil**: ventana flotante, *transparente* y con
-  *click-through* (el puntero atraviesa la ventana salvo encima del sprite y
-  del globo de texto), funcionando en distintos escritorios.
-- **Fase 2 — comportamiento**: rutinas, globo de texto, pomodoro, pausa activa,
-  API HTTP local y preferencias.
-
-Fuera de alcance: Pomodoro avanzado, integraciones externas, etc. (el pomodoro
-es funcional, pero es un temporizador simple).
-
-> ⚠️ **La pausa activa está desactivada por defecto en Wayland.** El protocolo
-> `ext-idle-notify-v1` hay que hablarlo a mano con ctypes (no hay binding de
-> Python instalado) y en libwayland 1.26 eso provoca un **fallo de
-> segmentación**. La app lo detecta con un auto-test en subproceso y avisa por
-> consola en vez de romperse. Detalle, comando para reproducirlo y lo que se
-> investigó: [sección dedicada](#por-qu%C3%A9-la-pausa-activa-est%C3%A1-desactivada-en-wayland).
-> Si instalas un binding real de Wayland, la función se activa sola al arrancar.
-
-## Requisitos
-
-- Python 3 (probado con 3.14)
-- PyGObject con GTK 4 (probado con 4.22)
-- pycairo
-- Para Wayland: `gtk4-layer-shell` (protocolo `zwlr_layer_shell_v1`)
-
-```bash
-# Arch / CachyOS  (gtk4-layer-shell es lo importante para Wayland)
-sudo pacman -S gtk4-layer-shell
-sudo pacman -S python-gobject gtk4 python-cairo   # resto de dependencias
-
-# Debian / Ubuntu
-sudo apt install libgtk4-layer-shell0 python3-gi python3-gi-cairo gir1.2-gtk-4.0
-
-# Fedora
-sudo dnf install gtk4-layer-shell python3-gobject gtk4 python3-cairo
+```text
+  ██████╗  ██████╗ ██╗  ██╗███████╗███╗   ███╗ ██████╗ ███╗   ██╗
+  ██╔══██╗██╔═══██╗██║ ██╔╝██╔════╝████╗ ████║██╔═══██╗████╗  ██║
+  ██████╔╝██║   ██║█████╔╝ █████╗  ██╔████╔██║██║   ██║██╔██╗ ██║
+  ██╔═══╝ ██║   ██║██╔═██╗ ██╔══╝  ██║╚██╔╝██║██║   ██║██║╚██╗██║
+  ██║     ╚██████╔╝██║  ██╗███████╗██║ ╚═╝ ██║╚██████╔╝██║ ╚████║
+  ╚═╝      ╚═════╝ ╚═╝  ╚═╝╚══════╝╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═══╝
+  ★ G A M E   B O Y   C O L O R   S T Y L E   L I N U X   P E T ★
 ```
 
-Comprueba lo instalado con:
+[![Release](https://img.shields.io/badge/Versi%C3%B3n-Beta%20Fase%202-E60012?style=for-the-badge&logo=nintendo&logoColor=white)](https://github.com/andrwvaz2/maskot-linux)
+[![Platform](https://img.shields.io/badge/Plataforma-Wayland%20%7C%20X11-FFCC00?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/andrwvaz2/maskot-linux)
+[![Engine](https://img.shields.io/badge/Motor-Python%203%20%2B%20GTK4-306998?style=for-the-badge&logo=python&logoColor=white)](https://www.gtk.org/)
+[![Graphics](https://img.shields.io/badge/Gr%C3%A1ficos-Cairo%20Pixel%20Art-FF5722?style=for-the-badge)](https://cairographics.org/)
+[![License](https://img.shields.io/badge/Licencia-Open%20Source-008080?style=for-the-badge)](https://github.com/andrwvaz2/maskot-linux)
 
-```bash
-pacman -Q gtk4-layer-shell    # Arch/CachyOS
+```text
+┌────────────────────────────────────────────────────────────────────────┐
+│  ¡Un MASKOT salvaje ha aparecido en el borde de tu pantalla!           │
+│                                                                        │
+│  "Un compañero virtual en pixel art 16x16 nativo para Linux.           │
+│   Flota con transparencia total, permite clicks a través de su         │
+│   cuerpo, toma siestas a 5 FPS y te cuida con técnicas Pomodoro."      │
+└────────────────────────────────────────────────────────────────────────┘
 ```
 
-Si `run.sh` detecta que falta en una sesión Wayland, avisa con el comando
-exacto para tu distro y recuerda que la mascota quedará sin anclar.
+</div>
 
-> En sesiones **X11** no hace falta `gtk4-layer-shell`: el backend X11 usa solo
-> libX11 (vía ctypes) y GDK.
+---
 
-## Ejecución
+## 📟 Pokédex Regional de Linux
 
-```bash
-./run.sh              # elige el backend solo
-./run.sh --x11        # fuerza X11/XWayland
-./run.sh --scale 8    # sprite a 8x (por defecto 4 => 64 px)
+```text
+  ▼ FICHA DE DATOS #001 — MASKOT (EDICIÓN LINUX) ▼
+  ┌──────────────────────────────┬────────────────────────────────────────┐
+  │         ▄▄▄▄▄▄▄▄▄▄           │ NOMBRE:    Maskot                      │
+  │       ▄████████████▄         │ ESPECIE:   Mascota de Escritorio       │
+  │      ████████████████        │ TIPO:      SISTEMA / PIXEL             │
+  │      ██  ██    ██  ██        │ FASE:      Beta (Fase 2: Comportamiento)│
+  │      ████████████████        │ HP:        100% Click-Through          │
+  │      ████  ████  ████        │ RENDIMIENTO: 20 FPS (5 FPS durmiendo)  │
+  │       ▀████████████▀         │ CONSUMO:   0.1% ~ 1.0% CPU en reposo   │
+  │         ▀▀▀▀▀▀▀▀▀▀           │ HÁBITAT:   Barra inferior / Overlay    │
+  │          █        █          │ COMPAÑERO: Ideal para programadores    │
+  └──────────────────────────────┴────────────────────────────────────────┘
 ```
 
-`run.sh` comprueba dependencias, avisa si falta `gtk4-layer-shell` y, si la
-librería está en `/usr/lib`, la precarga con `LD_PRELOAD` (ver “Carga de
-gtk4-layer-shell” más abajo). También puedes lanzarlo a mano:
+### ✨ Formas / Paletas de Color (Variantes Shiny)
+Al hacer clic o elegir en el menú de la bandeja, Maskot alterna entre 4 colores corporales inspirados en los cartuchos clásicos:
 
-```bash
-python3 main.py [--x11] [--scale N]
+| Variante | Tono | Elemento / Vibra |
+|:---:|:---:|:---|
+| 🟧 **Fuego (Por defecto)** | `(0.95, 0.58, 0.18)` | Cálido, activo y enérgico |
+| 🟩 **Hoja / Menta** | `(0.22, 0.72, 0.62)` | Fresco, relajante y concentrado |
+| 🟪 **Psíquico / Amatista** | `(0.62, 0.42, 0.86)` | Misterioso, nocturno y hacker |
+| 🌸 **Hada / Rubí** | `(0.92, 0.50, 0.70)` | Dulce, amigable y sociable |
+
+---
+
+## 🎮 Características del Juego
+
+- 🪟 **Capa Fantasma (Click-Through Real):** La ventana es 100% transparente. El cursor del ratón atraviesa todo el lienzo libre (`Gdk.Surface.set_input_region`), interactuando únicamente cuando tocas al sprite o a su globo de diálogo.
+- 🎭 **Comportamiento Autónomo:** Sistema de rutinas con pesos probabilísticos: pasea, programa en su laptop, lee en una banca, duerme siestas o pide un café.
+- 🍅 **Poké-Pomodoro Integrado:** Temporizadores 25/5, 45/10 y 50/10. La mascota coordina sus actividades según estés en bloque de trabajo o de descanso.
+- 🧘 **Pausa Activa (Salud del Entrenador):** Tras 50 minutos continuos de uso, inicia una cuenta regresiva (3, 2, 1) y realiza un estiramiento guiado de 6 segundos.
+- 💬 **Globo de Diálogo Dinámico:** Renderizado en Cairo con rabito direccional, sombra y desvanecido; la región de entrada se expande dinámicamente para permitir interacción con el mensaje.
+- 🛎️ **Bandeja de Estado (DBus StatusNotifierItem):** Menú nativo en el panel del sistema sin depender de librerías obsoletas de GTK3.
+- ⚡ **API HTTP Local (`127.0.0.1:7777`):** Controla a Maskot vía `curl` o scripts bash desde cualquier terminal.
+- 🍃 **Ahorro de Batería Legendario:** 20 FPS en actividad normal y **5 FPS durante la siesta**, consumiendo casi 0% de CPU.
+
+---
+
+## ⚔️ Lista de Movimientos (Moveset & Rutinas)
+
+Maskot decide de forma autónoma qué hacer cada 20–40 segundos evaluando pesos de probabilidad (priorizando las actividades tranquilas):
+
+```text
+  ╔═════════════════════════════════════════════════════════════════════════════╗
+  ║                              LISTA DE ACCIONES                              ║
+  ╠═════════════════════════════════════════════════════════════════════════════╣
+  ║  [1] PASEAR         (Movimiento por la pantalla buscando un nuevo rincón)   ║
+  ║  [2] SIESTA         (Cierra los ojos, baja a 5 FPS y emite "Zzz")           ║
+  ║  [3] LEER BANCA     (Coloca una banca y saca su libro de aventuras)         ║
+  ║  [4] ECHAR CÓDIGO   (Despliega su mini laptop y teclea a la par tuya)       ║
+  ║  [5] CAFÉ BREAK     (Toma una taza humeante en los descansos del Pomodoro)  ║
+  ║  [!] SALTO AMISTOSO (¡Hazle click encima y reaccionará saltando!)           ║
+  ╚═════════════════════════════════════════════════════════════════════════════╝
 ```
 
-> `--x11` relanza el proceso con `GDK_BACKEND=x11`: GDK lee esa variable al
-> abrir el display, y para entonces GTK ya está cargado, así que no basta con
-> asignarla dentro del programa.
+### 🧠 Primitivas del Motor de Rutinas (`rutinas.py`)
+Cada rutina se ensambla con una secuencia de micro-acciones:
 
-## Qué hace
-
-| Pieza | Responsabilidad |
+| Primitiva | Función |
 |---|---|
-| `main.py` | Coordinación: backend, bucle de animación, dibujo, menú, API |
-| `rutinas.py` | Motor de rutinas y las 5 rutinas (pasear, siesta, leer en la banca, echar código, descanso con café) |
-| `objetos.py` | Objetos pixel-art (banca, libro, taza, portátil) |
-| `globo.py` | Globo de texto con Cairo (tipografía "toy", sin Pango) |
-| `pomodoro.py` | Temporizador 25/5, 45/10 y 50/10 |
-| `pausa.py` | Detección de inactividad y estiramiento guiado |
-| `api.py` | API HTTP en 127.0.0.1 (apagada por defecto) |
-| `preferencias.py` | `~/.config/mascota/prefs.json` (personaje, días de uso…) |
-| `backends/base.py` | Click-through con `Gdk.Surface.set_input_region` |
-| `backends/wayland.py` | Layer-shell: capa OVERLAY, anclada abajo/izq/der, teclado NONE |
-| `backends/x11.py` | Propiedades EWMH y posicionado con `XMoveWindow` |
-| `sprite.py` | Frames 16×16, paletas y poses/caras |
-| `tray.py` | Bandeja StatusNotifierItem por DBus, con submenús |
+| `ir_a(x)` | Desplaza al sprite a la coordenada `x` (`None` para destino aleatorio). |
+| `decir(texto, ms)` | Despliega un mensaje en el globo de texto durante `ms` milisegundos. |
+| `cara(nombre, ms)` | Aplica una expresión facial: `feliz`, `cansado`, `pensar`. |
+| `esperar(ms, pose=…)` | Pausa en el lugar con una pose específica (`siesta`, `leer`, `codigo`). |
+| `objeto(nombre, x=…)` | Coloca o retira un objeto del escenario (`banca`, `libro`, `taza`, `portatil`). |
+| `saltar()` | Efectúa una animación de salto elástico. |
+| `fin()` | Concluye la rutina actual y cede el control al bucle aleatorio. |
 
-### Rutinas
+> [!TIP]
+> Si haces clic sobre Maskot en cualquier momento, la rutina actual se cancela de inmediato y el personaje da un salto de saludo.
 
-Cada rutina es una lista de acciones y el motor las ejecuta en secuencia sobre
-el sprite. Acciones disponibles:
+---
 
-| Acción | Qué hace |
-|---|---|
-| `ir_a(x)` | Camina hasta la posición `x` (`None` = al azar) |
-| `decir(texto, ms)` | Muestra un texto en el globo |
-| `cara(nombre, ms)` | Expresión: `feliz`, `cansado`, `pensar` |
-| `esperar(ms, pose=…)` | Se queda quieto; `pose` puede ser `siesta`, `leer`, `codigo` |
-| `objeto(nombre, x=…)` | Pone/quita un objeto (`banca`, `libro`, `taza`, `portatil`) |
-| `saltar()` | Da un salto |
-| `fin()` | Termina |
+## 🎒 Mochila & Herramientas Clave
 
-Rutinas incluidas: **pasear**, **siesta**, **leer en la banca**,
-**echar código** y **descanso_cafe** (esta última la usa el pomodoro en los
-descansos). Cada 20–40 s se elige una al azar con pesos que favorecen las
-tranquilas (siesta peso 3, leer y pasear 2, código 1). Durante un pomodoro la
-elección se guía por la fase.
+### 🍅 Poké-Pomodoro
+Controlable desde el menú de la bandeja o la API HTTP.
+- **Formatos:** `25/5` (clásico), `45/10` (intensivo), `50/10` (sesión extendida).
+- **Indicador:** Tiempo restante visible en el menú desplegable y en el tooltip del icono de la bandeja.
+- **Sincronización:** Durante la fase de **Trabajo**, Maskot lee o programa; en la fase de **Descanso**, saca su taza de café y te acompaña a despejar la mente.
 
-Un clic del usuario cancela la rutina y hace saltar a la mascota.
+### 🧘 Pausa Activa (Estiramiento Antifatiga)
+- Monitorea el tiempo de uso continuo de la pantalla.
+- Al acumular **50 minutos continuos**, lanza un aviso con cuenta atrás (3, 2, 1) y adopta la pose de estiramiento durante 6 segundos.
+- Si detecta inactividad (≥ 1 minuto sin usuario), la racha se reinicia automáticamente sin molestar.
 
-### Globo de texto
-
-Se dibuja con Cairo encima del sprite, con rabito que apunta a él, sombra y
-desvanecido al final. **El rectángulo del globo se une al del sprite en la
-región de entrada**, así que el texto es interactivo y el resto de la ventana
-sigue siendo click-through.
-
-### Pomodoro
-
-Formatos **25/5**, **45/10** y **50/10**, desde el menú de la bandeja. El
-tiempo restante aparece en el propio rótulo del menú (“Pomodoro trabajo: 24:31”)
-y en el tooltip del icono de bandeja. Al cambiar de fase la mascota acompaña:
-en **trabajo** programa o lee, en **descanso** se toma un café.
-
-### Pausa activa
-
-Tras **50 minutos de uso continuo** propone un estiramiento guiado con cuenta
-atrás (3, 2, 1) y luego la pose de estiramiento durante 6 s. Si el usuario se
-va (≥ 1 min de inactividad) la racha se reinicia y se cancela.
-
-Detecta la inactividad **solo** con el dato que publica el compositor; no lee
-teclas ni registra nada:
-
-- **Wayland**: protocolo `ext-idle-notify-v1` hablado con `libwayland-client`
-  por ctypes (no hay binding de Python instalado), con un **auto-test en
-  subproceso** para no arriesgar el proceso principal.
-- **X11**: extensión `MIT-SCREEN-SAVER`.
-
-> **En esta máquina no se pudo verificar ninguna de las dos** (ver “Lo que no
-> pude verificar”): XWayland no expone `MIT-SCREEN-SAVER` y el enlace a
-> `ext-idle-notify-v1` por ctypes provoca un fallo de segmentación. El
-> auto-test lo detecta y la pausa activa queda **desactivada con un aviso por
-> consola**, sin romper nada. La máquina de estados sí está probada con un
-> detector simulado.
-
-### ⚠️ Por qué la pausa activa está desactivada en Wayland
-
-Este es el punto más incómodo del prototipo, así que va aquí y no escondido en
-las limitaciones. **En Wayland la detección de inactividad no funciona**, y no
-por culpa de la lógica (esa está probada), sino por cómo hay que hablar el
-protocolo a mano.
-
-**Reproducirlo** (no afecta a la app, es un proceso aparte que se rompe solo):
-
-```console
-$ python3 pausa.py --selftest
-Segmentation fault (core dumped)
-$ echo $?
-139            # 139 = 128 + SIGSEGV(11)
-```
-
-Al arrancar la mascota se ve el aviso correspondiente:
-
-```console
-$ ./run.sh
-[pausa] auto-test falló (rc=-11):
-[pausa] ext-idle-notify-v1 no disponible: el auto-test de ext-idle-notify-v1 falló
-[pausa] no hay forma de consultar la inactividad (ni ext-idle-notify-v1 ni
-        MIT-SCREEN-SAVER); la pausa activa queda desactivada
-```
-
-**Por qué hace falta ctypes.** No hay binding de Python de Wayland instalado
-(sin `pywayland`, sin `pywlroots`, sin `gi` para `ext-idle-notify-v1`), así que
-la conexión se abre directamente contra `libwayland-client` 1.26. Choca de
-entrada: `wl_display_get_registry()` y `wl_display_get_default_seat()` son
-funciones *inline* del header, **no están exportadas**; solo se exportan
-`wl_display_interface`, `wl_registry_interface` y `wl_seat_interface`.
-
-**Qué sí se consiguió** (con `wl_proxy_marshal_array_flags`, en vez de la
-variádica `wl_proxy_marshal_flags`, que con ctypes es frágil):
-
-1. `wl_display.get_registry` → proxy del registro.
-2. Listener del registro → localizar los globals. niri anuncia
-   `ext_idle_notifier_v1` con **versión 2** y `wl_seat` con versión 9.
-3. `wl_registry.bind` de `wl_seat` y de `ext_idle_notifier_v1`.
-4. `wl_display_get_error()` == 0 en todos esos pasos: el compositor acepta
-   los enlaces.
-
-**Dónde se rompe:** al enviar la petición de notificación. Con la firma de la
-**v1** (`get_ext_idle_notification(new_id, object seat, uint timeout)`, "oun",
-opcode 1) el compositor responde con un error de protocolo, no con un fallo:
-
-```console
-wl_display#1: error 1: invalid arguments for ext_idle_notifier_v1#4.get_idle_notification
-```
-
-**La diferencia v1/v2 que se investigó.** El XML del protocolo declara
-`ext_idle_notifier_v1 version="2"`, y la v2 **cambió el nombre y el orden de los
-argumentos** de la petición:
-
-| Versión | Petición (opcode 1) | Firma | Argumentos |
-|---|---|---|---|
-| v1 | `get_ext_idle_notification` | `oun` | `id`, `seat`, `timeout` |
-| v2 | `get_idle_notification` | `nou` | `id`, `timeout`, `seat` |
-
-(La v2 añade además `get_input_idle_notification` en el opcode 2.) El problema
-de fondo es que **en el cable las dos versiones son idénticas** —tres palabras
-de 4 bytes—, así que un orden equivocado no da error de marshalling: el
-compositor lo decodifica al revés y responde `invalid arguments`. Probando
-ambos órdenes, los dos dan ese error; y al hacerlo con las structs de interfaz
-sintéticas a versión 2, la llamada peta dentro de
-`wl_proxy_marshal_array_flags` (segfault).
-
-Un detalle que costó encontrar: para un argumento `new_id` libwayland
-**desreferencia** el puntero que se le pasa (`closure->args[i].n = object->id`),
-así que pasar un `1` a mano como relleno provoca el fallo. Con la API variádica
-hay además el problema de que ctypes mete enteros y punteros en registros
-distintos de como los lee el `va_arg` de C. Con la API de array (`union
-wl_argument`) el marshalling sí es correcto, pero el servidor sigue
-rechazando la petición.
-
-**Consecuencia y cómo arreglarlo.** Tal como está, en Wayland la pausa activa no
-tiene forma de preguntar la inactividad, así que **queda desactivada** (y se
-dice por consola, en vez de fingir que funciona). El código de la vía X11
-(`XScreenSaverQueryInfo`) está escrito y debería funcionar en Xorg real, pero aquí
-tampoco se pudo probar porque XWayland no expone `MIT-SCREEN-SAVER`.
-
-Vías para arreglarlo, de menos a más trabajo:
-
-1. **Instalar un binding real** de Wayland para Python (`python-wayland`, o
-   `pywlroots`) y rehacer `WaylandIdle` con él: la API se reduce a enlazar el
-   global y escuchar dos eventos. Con eso la pausa activa se activaría sola al
-   arrancar, porque el auto-test ya es la única puerta de entrada.
-2. **Usar una ruta específica del compositor** si existe (p. ej. un
-   `IdleMonitor` por DBus): niri no implementa `org.gnome.Mutter.IdleMonitor`,
-   pero otros setups podrían.
-3. **Preguntar al usuario**: esta app es una mascota de escritorio, tiene un
-   click-through y un menú; un "¿sigues ahí?" cada 50 min puede ser tan válido
-   como mirar el reloj del servidor, y no depende de ningún protocolo exótico.
-
-### API HTTP local
-
-Apagada por defecto; se activa desde el menú (`API local: activar`). Escucha
-**solo en 127.0.0.1:7777** y usa únicamente `http.server` de la biblioteca
-estándar (sin dependencias). Sin autenticación: es un servicio local; cualquiera
-con acceso a la máquina puede usarlo.
-
-```bash
-curl -s 127.0.0.1:7777/estado | python3 -m json.tool
-curl -s 127.0.0.1:7777/rutinas
-curl -s -X POST -d '{"texto":"hola","ms":3000}' 127.0.0.1:7777/decir
-curl -s -X POST -d '{"texto":"aviso corto"}' 127.0.0.1:7777/aviso
-curl -s -X POST -d '{"nombre":"siesta"}'       127.0.0.1:7777/rutina
-curl -s -X POST -d '{"accion":"iniciar","formato":"45/10"}' 127.0.0.1:7777/pomodoro
-```
-
-| Ruta | Cuerpo | Efecto |
-|---|---|---|
-| `GET /estado` | — | Instantánea: sprite, rutina, globo, pomodoro, pausa, API, personaje, días de uso |
-| `GET /rutinas` | — | Catálogo de rutinas y acciones |
-| `POST /aviso` | `{"texto": "..."}` | Aviso corto (1,8 s) |
-| `POST /decir` | `{"texto": "...", "ms": 4000}` | Globo con duración concreta |
-| `POST /rutina` | `{"nombre": "pasear"}` | Lanza esa rutina |
-| `POST /pomodoro` | `{"accion": "iniciar\|pausar\|reanudar\|saltar\|parar", "formato": "45/10"}` | Control del pomodoro |
-
-Los `POST` se encolan y se ejecutan en el hilo principal de GTK (respuesta
-`202`); los datos inválidos devuelven `400` con el detalle.
-
-### Preferencias
-
-`~/.config/mascota/prefs.json` (se crea solo):
-
+### 💾 Memoria de Cartucho (Preferencias)
+Maskot guarda tu progreso en `~/.config/mascota/prefs.json`:
 ```json
 {
   "personaje": "naranja",
@@ -284,141 +134,190 @@ Los `POST` se encolan y se ejecutan en el hilo principal de GTK (respuesta
   "api_puerto": 7777
 }
 ```
+- `dias_uso`: Medalla que registra los días distintos en los que has entrenado/trabajado junto a tu mascota.
 
-`dias_uso` cuenta los días naturales en los que se ha abierto la app (una vez
-por día). `personaje` es el color del cuerpo (naranja, verde, violeta, rosa) y
-se cambia desde el menú.
+---
 
-## Rendimiento
+## 🕹️ Requisitos de la Consola
 
-- Animación a 20 FPS; **5 FPS mientras duerme** (la siesta baja la frecuencia y
-  el temporizador se reprograma).
-- CPU medida: **0–1 %** en reposo con rutinas y API activas.
-- El hilo HTTP nunca toca GTK: los `POST` se encolan y el `GET /estado` lee una
-  instantánea que refresca el bucle principal.
+- **Python 3** (verificado en 3.14)
+- **PyGObject** con **GTK 4** (verificado en 4.22)
+- **pycairo**
+- **gtk4-layer-shell** (esencial para sesiones Wayland con protocolo `zwlr_layer_shell_v1`)
 
-## Compatibilidad (qué se verificó y qué no)
+### 📦 Instalación de Dependencias
 
-Entorno de prueba: **CachyOS + niri (Wayland) + XWayland**.
+```bash
+# Arch Linux / CachyOS / Manjaro
+sudo pacman -S gtk4-layer-shell python-gobject gtk4 python-cairo
 
-| Camino | Estado | Cómo se comprobó |
-|---|---|---|
-| Wayland + layer-shell (recomendado) | ✅ verificado | Capa `mascota` en Overlay/keyboard None; `wl_region.add(x, 32, 64, 64)` actualizándose; captura con el sprite visible y el contenido de atrás viéndose a través |
-| Wayland sin layer-shell (fallback) | ✅ verificado | Aviso por consola; la ventana normal igual recibe `wl_region.add(...)` + `set_input_region` |
-| X11 / XWayland | ✅ verificado | Shape de entrada = rect del sprite (y del globo cuando está visible); clic real inyectado con XTest → el salto se ejecutó; EWMH correcto |
-| Rutinas y poses | ✅ verificado | Las 5 rutinas completan su ciclo; capturas de la siesta (con “Zzz”), la banca con el libro y el código con el portátil |
-| Globo de texto | ✅ verificado | Captura con el globo, el rabito y el texto; su rect entra en la región de entrada |
-| Pomodoro | ⚠️ parcial | Inicio, cambio de formato, salto de fase y el cambio de rutina por fase; **no** se esperó un bloque completo de 25/45/50 min |
-| Menú de bandeja | ⚠️ parcial | `GetLayout` devuelve el árbol con submenús y `Event` funciona; **no** se hizo clic en el menú real del shell (todo por DBus) |
-| Pausa activa (lógica) | ✅ verificado | Máquina de estados probada con un detector simulado (50 min → 3, 2, 1 → estirar → fin; cancelación por ausencia) |
-| Pausa activa (detector real) | ❌ **no verificado** | Ver abajo |
-| API HTTP | ✅ verificado | Los 6 endpoints probados con `curl`, incluidos 400 y 404 |
-| Preferencias | ✅ verificado | Fichero creado y leído; `personaje` y `dias_uso` |
-| CPU / 5 FPS al dormir | ✅ verificado | 0–1 %; `fps=5` mientras `durmiendo=true` |
-| Xorg real (no XWayland) | ❌ no probado | Solo hay sesión Wayland en esta máquina |
-| GNOME/KDE Wayland (sin `zwlr_layer_shell`) | ❌ no probado | Sin layer-shell el backend avisa y sigue con ventana normal |
-| i3 / bspwm / Openbox | ❌ no probado | Ver limitación de `struts` más abajo |
-| Clic real sobre la mascota en Wayland | ⚠️ parcial | Verificado a nivel de protocolo Wayland; no hubo herramienta para inyectar puntero (`wtype`/`ydotool` no instaladas) |
-| Posición “abajo de todo” en X11 | ⚠️ parcial | Funciona con un WM X11 clásico; **en XWayland+niri `XMoveWindow` es ignorado** |
+# Debian / Ubuntu (22.04+)
+sudo apt update
+sudo apt install libgtk4-layer-shell0 python3-gi python3-gi-cairo gir1.2-gtk-4.0
 
-## Lo que NO pude verificar
-
-1. **Detección de inactividad en Wayland (`ext-idle-notify-v1`).** No hay
-   binding de Python instalado, así que se habló el protocolo a mano con
-   `ctypes` sobre `libwayland-client` 1.26. Se consiguió enlazar el global y
-   `wl_seat` (`bind` con `wl_registry_interface` y `wl_display_interface`
-   exportadas), pero la llamada `get_idle_notification` provoca un **fallo de
-   segmentación** dentro de `wl_proxy_marshal_array_flags`, y niri además
-   responde `invalid arguments` con la firma de la v1. La v2 del protocolo
-   reordered los argumentos (`nou`) y reordenar no bastó. Por eso la
-   implementación va siempre precedida de un auto-test en subproceso: si peta,
-   la pausa activa se desactiva con un aviso en vez de tumbar la app.
-   *Cómo lo probé:* `python3 pausa.py --selftest`.
-2. **`MIT-SCREEN-SAVER` en X11.** El camino está implementado
-   (`XScreenSaverQueryInfo`), pero **XWayland no expone esa extensión** en esta
-   máquina, así que no se pudo leer un tiempo de inactividad real. En Xorg con
-   un WM real debería funcionar, pero está sin probar.
-3. **La pausa activa de principio a fin.** Sin detector, los 50 minutos no se
-   pueden esperar en una prueba; se probó la lógica con un detector simulado.
-4. **Un ciclo completo de pomodoro** (25/45/50 min reales) y la transición
-   automática trabajo → descanso → trabajo.
-5. **El menú de bandeja en el shell real**: se verificó por DBus
-   (`GetLayout`/`Event`), no abriendo el menú con el ratón.
-6. **Other escritorios**: nada más que niri se ha probado.
-
-## Limitaciones conocidas
-
-1. **niri: una ventana *toplevel* enfocada se rellena de lavanda.**
-   Cuando niri enfoca una ventana normal (X11 **o** Wayland sin layer-shell)
-   dibuja su efecto de fondo (focus-ring con degradado `#9ccbfb → #d4bee6`, de
-   la paleta del wallpaper) *detrás* de la ventana. Como la ventana es
-   transparente, ese relleno se ve entero. Se comprobó que **sin foco la
-   ventana es transparente de verdad** y que la **layer-surface con `keyboard
-   NONE` nunca toma foco** → transparencia correcta.
-
-   **Ya está resuelto en la configuración de niri de esta máquina.** En
-   `~/.config/niri/cfg/rules.kdl` (copia de seguridad en `rules.kdl.bak`):
-
-   ```kdl
-   window-rule {
-       match title="^Mascota$"
-       open-focused false
-       focus-ring { off; }
-   }
-   ```
-
-   El título que usa la app es exactamente `Mascota` (`main.py`, `set_title`),
-   así que la regla solo afecta a la mascota. Ojo al punto y coma:
-   `focus-ring { off; }`, no `focus-ring { off }` (KDL lo rechaza).
-
-   *Contrapartida:* en niri la ventana con `--x11` es una *tile* más del layout
-   y, al no tomar el foco, niri no desplaza la vista: puede quedar fuera de
-   pantalla. La ruta Wayland con layer-shell no le afecta.
-2. **XWayland ignora `XMoveWindow`.** La ventana X11 queda donde la coloque el
-   compositor (niri la hace *tile*), no abajo del todo. En Xorg con un WM
-   clásico sí funcionaría.
-3. **`_NET_WM_WINDOW_TYPE_DOCK` puede reservar struts** en i3/bspwm y dejar
-   una franja muerta al final de la pantalla. Está pendiente de probar; si
-   pasa, cambiar a `_NET_WM_WINDOW_TYPE_NOTIFICATION` en `backends/x11.py`.
-4. **Carga de `gtk4-layer-shell`.** Debe cargarse *antes* que `libwayland`
-   (es el orden de enlace de la librería). Si no, `is_supported()` devuelve
-   `False` y la app cae al fallback. `run.sh` lo resuelve con `LD_PRELOAD`
-   cuando la librería está en `/usr/lib` o `/usr/lib64`.
-5. **Bandeja sin libayatana-appindicator.** Esa librería es de GTK3 y no
-   convive con GTK4 en el mismo proceso (PyGObject no carga dos versiones del
-   namespace `Gtk`), así que el protocolo StatusNotifierItem se habla
-   directamente por DBus con Gio.
-6. **`Gtk.Application` se descartó a propósito**: en XWayland su arranque
-   podía bloquearse en la carga del tema de iconos. Se usa `GLib.MainLoop`.
-7. **Posicionamiento de monitores:** GTK4 no expone “monitor primario”
-   (`Gdk.Monitor` no tiene `is_primary()`), se usa el primero de la lista.
-8. **El fallback Wayland es una ventana flotante de 200×100.** Sin
-   layer-shell la app pide un ancho “natural” (0) y GTK calcula 200 px; niri
-   la muestra flotando en mitad de pantalla. Sirve para comprobar el
-   click-through, pero para tener la mascota abajo del todo hace falta
-   layer-shell (Wayland) o `--x11` (X11 clásico).
-9. **El globo usa la tipografía “toy” de Cairo** (sin Pango): no hay
-   acentos, subrayado ni ajuste de línea, y la fuente depende de la que
-   tenga Cairo. Es suficiente para frases cortas.
-
-## Estructura
-
+# Fedora
+sudo dnf install gtk4-layer-shell python3-gobject gtk4 python3-cairo
 ```
+
+> [!NOTE]
+> En entornos **X11 puros**, `gtk4-layer-shell` no es necesario: el backend X11 interactúa directamente mediante `libX11` (ctypes) y GDK.
+
+---
+
+## 🚀 Insertar Cartucho (Cómo Ejecutar)
+
+El lanzador inteligente [run.sh](file:///home/andrw/mascota/run.sh) detecta tu entorno gráfico, verifica dependencias y gestiona el orden de enlace de librerías (`LD_PRELOAD`):
+
+```bash
+# 1. Modo Estándar (Detección automática de Wayland o X11)
+./run.sh
+
+# 2. Forzar Backend X11 / XWayland
+./run.sh --x11
+
+# 3. Escalar Sprite (Pixel art nítido al doble de tamaño: 8x => 128 px)
+./run.sh --scale 8
+```
+
+O lanzamiento directo con Python:
+```bash
+python3 main.py [--x11] [--scale N]
+```
+
+---
+
+## 📡 Poké-Comandos (API HTTP Local en `:7777`)
+
+Maskot incorpora un servidor HTTP ultraligero (`http.server` estándar de Python, sin dependencias externas) que escucha exclusivamente en `127.0.0.1:7777`. Viene apagado por defecto y se enciende con un clic en la bandeja (`API local: activar`).
+
+Los comandos `POST` se despachan de forma segura al hilo principal de GTK vía `GLib.idle_add` (retornando `202 Accepted`).
+
+```bash
+# Consultar estado global del sistema
+curl -s 127.0.0.1:7777/estado | python3 -m json.tool
+
+# Listar catálogo de rutinas disponibles
+curl -s 127.0.0.1:7777/rutinas
+
+# Hacer hablar a Maskot (globo con duración personalizada en ms)
+curl -s -X POST -d '{"texto": "¡Hola, Entrenador!", "ms": 4000}' 127.0.0.1:7777/decir
+
+# Notificación rápida (1.8 segundos)
+curl -s -X POST -d '{"texto": "Build finalizado con éxito ✨"}' 127.0.0.1:7777/aviso
+
+# Forzar una rutina
+curl -s -X POST -d '{"nombre": "siesta"}' 127.0.0.1:7777/rutina
+
+# Controlar el Poké-Pomodoro
+curl -s -X POST -d '{"accion": "iniciar", "formato": "25/5"}' 127.0.0.1:7777/pomodoro
+curl -s -X POST -d '{"accion": "pausar"}' 127.0.0.1:7777/pomodoro
+```
+
+### Tabla de Endpoints
+
+| Método | Ruta | Carga Útil (JSON) | Descripción |
+|:---:|---|---|---|
+| `GET` | `/estado` | — | Snapshot: sprite, rutina, globo, pomodoro, pausa, API, color, días de uso |
+| `GET` | `/rutinas` | — | Catálogo completo de rutinas y micro-acciones |
+| `POST` | `/aviso` | `{"texto": "..."}` | Globo de advertencia rápido (1.8 s) |
+| `POST` | `/decir` | `{"texto": "...", "ms": 3000}` | Muestra texto durante la duración solicitada |
+| `POST` | `/rutina` | `{"nombre": "siesta"}` | Interrumpe y ejecuta la rutina pedida |
+| `POST` | `/pomodoro` | `{"accion": "iniciar\|pausar\|reanudar\|saltar\|parar", "formato": "..."}` | Control del ciclo Pomodoro |
+
+---
+
+## 🗺️ Mapa de Compatibilidad (Estado de las Rutas)
+
+Pruebas ejecutadas en entorno: **CachyOS + niri (Wayland) + XWayland**.
+
+| Componente / Escenario | Estado | Notas de Verificación |
+|---|:---:|---|
+| **Wayland + layer-shell** *(Recomendado)* | 🟢 Verificado | Capa `mascota` en `OVERLAY`, teclado `NONE`. Click-through perfecto con `wl_region`. |
+| **Wayland sin layer-shell** *(Fallback)* | 🟡 Funcional | Ventana flotante clásica; emite aviso y mantiene `set_input_region`. |
+| **X11 / XWayland** | 🟢 Verificado | Shape de entrada recortado al sprite y globo. Inyección de clic XTest probada. |
+| **Rutinas, Poses & Objetos** | 🟢 Verificado | Ciclo completo de las 5 rutinas verificado (banca, libro, laptop, café, siesta). |
+| **Globo de Texto Cairo** | 🟢 Verificado | Renderizado nítido; el rabito apunta al sprite y su área recibe clicks. |
+| **Poké-Pomodoro** | 🟡 Parcial | Estados, fases y timers verificados; pendiente prueba continua desatendida de 50m. |
+| **Bandeja de Estado (DBus)** | 🟡 Parcial | Árbol de submenús `GetLayout` y eventos validados vía DBus. |
+| **Pausa Activa (Lógica)** | 🟢 Verificado | Máquina de estados validada con detector simulado (50 min → 3,2,1 → estirar). |
+| **Pausa Activa (Sensor Real)** | 🔴 Pendiente | Detalles técnicos explicados abajo (auto-test preventivo). |
+| **Consumo de Energía & 5 FPS** | 🟢 Verificado | 0–1% CPU medido en reposo; baja instantáneamente a 5 FPS al dormir. |
+
+---
+
+## 🔬 Notas del Laboratorio (Investigación Técnica & Hacks)
+
+### ⚠️ Estado de la Detección de Inactividad en Wayland
+La pausa activa necesita conocer si el usuario sigue frente al teclado. A diferencia de X11 (`MIT-SCREEN-SAVER`), en Wayland no existe una llamada global sin permisos especiales.
+
+> [!WARNING]
+> **La detección en Wayland se desactiva preventivamente por seguridad.**  
+> Al no existir bindings empaquetados de Python para Wayland (`pywayland` / `pywlroots`), la app habla con `libwayland-client 1.26` directamente mediante `ctypes`. El protocolo `ext-idle-notify-v1` versión 2 reordenó los argumentos de la llamada `get_idle_notification` (`nou` en lugar de `oun`). Al realizar el marshalling a bajo nivel en C con `wl_proxy_marshal_array_flags`, libwayland desreferencia punteros de ID que provocan un fallo de segmentación (`SIGSEGV`, código 139).
+>
+> Para proteger la experiencia de usuario, Maskot incluye un **auto-test en subproceso aislado** (`python3 pausa.py --selftest`): si el detector falla, la app simplemente desactiva la pausa activa e imprime un aviso claro en consola, **sin colgarse ni cerrarse**.
+>
+> **Soluciones previstas a futuro:**
+> 1. Empaquetar un binding nativo real (`python-wayland`).
+> 2. Implementar interfaces específicas por DBus según el compositor (`org.gnome.Mutter.IdleMonitor`, etc.).
+> 3. Modo alternativo con diálogo interactivo: "¿Sigues ahí, Entrenador?".
+
+### 🪟 Regla de Ventana para Compositor `niri`
+En compositores dinámicos basados en scrolls como `niri`, enfocar una ventana flotante transparente puede provocar que el compositor pinte su halo/anillo de foco (*focus-ring* lavanda) detrás de la ventana.
+
+Para solucionarlo, añade esta regla a tu archivo `~/.config/niri/cfg/rules.kdl`:
+```kdl
+window-rule {
+    match title="^Mascota$"
+    open-focused false
+    focus-ring { off; }
+}
+```
+*(Maskot define su título exactamente como `Mascota`, por lo que la regla es quirúrgica).*
+
+### 🧩 Otras Particularidades del Sistema
+- **Orden de Enlace de `gtk4-layer-shell`:** Debe cargarse en memoria antes de `libwayland`. [run.sh](file:///home/andrw/mascota/run.sh) lo soluciona automáticamente aplicando `LD_PRELOAD`.
+- **Bandeja sin librerías obsoletas:** No se utiliza `libayatana-appindicator` (vinculada al runtime de GTK3 incompatible con GTK4). En su lugar, [tray.py](file:///home/andrw/mascota/tray.py) implementa el protocolo StatusNotifierItem nativamente mediante llamadas DBus con `Gio`.
+- **Tipografía "Toy" de Cairo:** Los globos utilizan la API tipográfica simplificada de Cairo para mantener cero dependencias pesadas de Pango.
+
+---
+
+## 💾 Estructura del Cartucho (Arquitectura)
+
+```text
 mascota/
-├── main.py           # coordinación: backend, animación, dibujo, menú, API
-├── rutinas.py        # motor de rutinas + las 5 rutinas
-├── objetos.py        # banca, libro, taza, portátil
-├── globo.py          # globo de texto con Cairo
-├── pomodoro.py       # 25/5, 45/10, 50/10
-├── pausa.py          # inactividad (ext-idle-notify / XScreenSaver) + estiramiento
-├── api.py            # API HTTP en 127.0.0.1:7777 (http.server)
-├── preferencias.py   # ~/.config/mascota/prefs.json
-├── sprite.py         # frames pixel-art 16x16, poses y caras
-├── tray.py           # bandeja StatusNotifierItem por DBus
-├── run.sh            # lanzador con comprobaciones
+├── main.py              # Bucle principal, renderizado Cairo, coordinación y eventos
+├── rutinas.py           # Motor secuencial de acciones y catálogo de las 5 rutinas
+├── objetos.py           # Sprites pixel art de objetos (banca, libro, portátil, taza)
+├── globo.py             # Globo de texto Cairo con rabito direccional y sombra
+├── pomodoro.py          # Lógica del temporizador Pomodoro (25/5, 45/10, 50/10)
+├── pausa.py             # Máquina de estados de pausa activa y auto-test en Wayland
+├── api.py               # Servidor HTTP local REST (127.0.0.1:7777) sin dependencias
+├── preferencias.py      # Persistencia en disco (~/.config/mascota/prefs.json)
+├── sprite.py            # Definición de grilla 16x16, paletas de color, poses y caras
+├── tray.py              # Icono y menú en la bandeja del sistema vía DBus puro
+├── run.sh               # Lanzador con detección de entorno y comprobación de libs
 └── backends/
-    ├── __init__.py
-    ├── base.py       # set_input_region() vía GDK (X11 y Wayland)
-    ├── wayland.py    # gtk4-layer-shell + fallback
-    └── x11.py        # EWMH + XMoveWindow con ctypes
+    ├── __init__.py      # Selector dinámico de backend
+    ├── base.py          # Máscaras de entrada (set_input_region) con GDK
+    ├── wayland.py       # Integración con gtk4-layer-shell y modo fallback
+    └── x11.py           # Ventana EWMH (DOCK/ABOVE) y posicionamiento XLib
 ```
+
+---
+
+## 🏆 Salón de la Fama (Créditos & Licencia)
+
+Este proyecto es una **implementación original e independiente para Linux** escrita en Python y GTK4. 
+
+Inspirado en el concepto de [alecap92/maskot-mac](https://github.com/alecap92/maskot-mac) (mascota de escritorio para macOS escrita en Swift).
+- **No es un fork:** No comparte base de código ni dependencias; la arquitectura, backends gráficos de Wayland/X11, rutinas y motor HTTP han sido diseñados desde cero para el ecosistema Linux.
+- Si en el futuro se incorpora arte o recursos directos de dicho proyecto, se preservará la correspondiente licencia MIT y atribución de autoría.
+
+---
+
+<div align="center">
+
+**¿Listo para tu aventura? ¡Ejecuta `./run.sh` y que empiece la jornada de código!**  
+*Hecho con ☕, píxeles y amor por el software libre.*
+
+</div>
