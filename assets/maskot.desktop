@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=Maskot
+GenericName=Desktop Pet
+Comment=Mascota de escritorio en pixel art para Linux
+Exec=maskot
+Icon=maskot
+Terminal=false
+Type=Application
+Categories=Utility;Amusement;
+Keywords=pet;pixel;mascota;desktop;companion;gtk4;
+StartupWMClass=Mascota

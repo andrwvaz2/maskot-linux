@@ -141,28 +141,48 @@ Las preferencias se almacenan automáticamente en `~/.config/mascota/prefs.json`
 - **pycairo**
 - **gtk4-layer-shell** (requerido para Wayland mediante el protocolo `zwlr_layer_shell_v1`)
 
-### 📦 Instalación de Dependencias
+---
+
+## ⚡ Instalación Rápida & Configurador Multi-WM
+
+Maskot incluye un instalador interactivo [install.sh](file:///home/andrw/mascota/install.sh) que detecta automáticamente tu gestor de paquetes, instala dependencias e inyecta las reglas de ventana necesarias para tu compositor o entorno:
 
 ```bash
-# Arch Linux / CachyOS / Manjaro
-sudo pacman -S gtk4-layer-shell python-gobject gtk4 python-cairo
-
-# Debian / Ubuntu (22.04+)
-sudo apt update
-sudo apt install libgtk4-layer-shell0 python3-gi python3-gi-cairo gir1.2-gtk-4.0
-
-# Fedora
-sudo dnf install gtk4-layer-shell python3-gobject gtk4 python3-cairo
+# Instalador interactivo automático (detecta tu distro y entorno)
+./install.sh
 ```
 
-> [!NOTE]
-> En sesiones **X11**, no es necesario `gtk4-layer-shell`: el backend X11 interactúa directamente mediante `libX11` (ctypes) y GDK.
+También puedes ejecutarlo de manera directa para tu entorno específico o de forma desatendida:
+
+```bash
+# Configuración específica por entorno / Window Manager:
+./install.sh --wm niri         # Aplica regla anti focus-ring lavanda en niri
+./install.sh --wm hyprland     # Añade layerrule y windowrulev2 a hyprland.conf
+./install.sh --wm sway         # Configura reglas floating/sticky en sway/config
+./install.sh --wm i3           # Configura reglas floating/sticky en i3/config
+./install.sh --wm bspwm        # Configura reglas bspc en bspwmrc
+./install.sh --wm gnome        # Configura lanzador compatible con XWayland (--x11)
+./install.sh --wm kde          # Integración con KWin y bandeja del sistema
+./install.sh --wm xfce         # Soporte dock EWMH tradicional
+
+# Opciones útiles:
+./install.sh --autostart       # Activa inicio automático con la sesión
+./install.sh --no-deps         # Omite instalación de paquetes del sistema
+./install.sh --uninstall       # Elimina binarios, accesos directos e iconos
+```
+
+### ¿Qué hace el instalador?
+1. 📦 **Dependencias:** Comprueba paquetes según tu distro (`pacman`, `apt`, `dnf`, `zypper`).
+2. 🪟 **Reglas de WM:** Configura reglas óptimas de transparencia y foco (evitando problemas en niri, Hyprland, etc.).
+3. 🚀 **Comando Global:** Instala `maskot` en `~/.local/bin/maskot` para lanzarlo desde cualquier terminal.
+4. 🎨 **Lanzador de Escritorio:** Instala el archivo `maskot.desktop` y el icono pixel art oficial en formato SVG.
+5. 🔄 **Autostart:** Configura el inicio automático al encender tu PC si así lo decides.
 
 ---
 
-## 🚀 Inicio Rápido (Cómo Ejecutar)
+## 🚀 Ejecución Manual
 
-El lanzador [run.sh](file:///home/andrw/mascota/run.sh) detecta el entorno de pantalla, verifica librerías y configura `LD_PRELOAD` automáticamente para asegurar el orden de enlace:
+Si prefieres ejecutar Maskot sin instalarlo en el sistema, puedes usar directamente el lanzador [run.sh](file:///home/andrw/mascota/run.sh):
 
 ```bash
 # 1. Ejecución estándar (autodetecta Wayland o X11)
@@ -303,6 +323,10 @@ mascota/
 ├── sprite.py            # Grilla pixel art 16x16, paletas de color, poses y caras
 ├── tray.py              # Icono y menú en la bandeja del sistema vía DBus puro
 ├── run.sh               # Lanzador con detección de entorno y comprobación de libs
+├── install.sh           # Instalador interactivo y configurador multi-WM/escritorios
+├── assets/
+│   ├── maskot.svg       # Icono pixel art oficial en formato vectorial
+│   └── maskot.desktop   # Lanzador estándar XDG para menús y autostart
 └── backends/
     ├── __init__.py      # Selector dinámico de backend
     ├── base.py          # Regiones de click-through (set_input_region) con GDK
