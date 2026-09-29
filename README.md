@@ -150,14 +150,28 @@ Las preferencias se almacenan automáticamente en `~/.config/mascota/prefs.json`
 
 ## ⚡ Instalación Rápida & Configurador Multi-WM
 
-Maskot incluye un instalador interactivo [install.sh](file:///home/andrw/mascota/install.sh) que detecta automáticamente tu gestor de paquetes, instala dependencias e inyecta las reglas de ventana necesarias para tu compositor o entorno:
+Maskot incluye un instalador interactivo [install.sh](file:///home/andrw/mascota/install.sh) que detecta automáticamente tu gestor de paquetes, comprueba dependencias y permite inyectar reglas de ventana para tu compositor o entorno.
 
-### Opción A — Un solo comando (One-Liner vía curl):
+> [!WARNING]
+> **Estado de compatibilidad por entorno:**
+> - **niri (+ XWayland):** 🟢 **Probado** activamente en el entorno de desarrollo.
+> - **Hyprland, Sway, i3, bspwm, GNOME, KDE, XFCE:** ⚠️ **No probadas**.
+> El instalador **nunca aplicará reglas en silencio ni modificará tu configuración sin tu permiso expreso**: te mostrará la regla propuesta y te preguntará `¿aplicar esta regla a tu config? [s/N]` (por defecto **No**). Para paquetes del sistema, también te solicitará confirmación (`[s/N]`).
+
+### Opción A — Modo simulación sin tocar el sistema (`--dry-run`):
+```bash
+# Inspecciona qué comandos, rutas y reglas se aplicarían sin modificar nada:
+curl -sSL https://raw.githubusercontent.com/andrwvaz2/maskot-linux/main/install.sh | bash -s -- --dry-run
+# O si ya clonaste el repositorio:
+./install.sh --dry-run
+```
+
+### Opción B — Un solo comando (One-Liner vía curl):
 ```bash
 curl -sSL https://raw.githubusercontent.com/andrwvaz2/maskot-linux/main/install.sh | bash
 ```
 
-### Opción B — Clonando el repositorio:
+### Opción C — Clonando el repositorio:
 ```bash
 git clone https://github.com/andrwvaz2/maskot-linux.git
 cd maskot-linux
@@ -167,28 +181,37 @@ cd maskot-linux
 También puedes ejecutarlo de manera directa para tu entorno específico o de forma desatendida:
 
 ```bash
-# Configuración específica por entorno / Window Manager:
-./install.sh --wm niri         # Aplica regla anti focus-ring lavanda en niri
-./install.sh --wm hyprland     # Añade layerrule y windowrulev2 a hyprland.conf
-./install.sh --wm sway         # Configura reglas floating/sticky en sway/config
-./install.sh --wm i3           # Configura reglas floating/sticky en i3/config
-./install.sh --wm bspwm        # Configura reglas bspc en bspwmrc
-./install.sh --wm gnome        # Configura lanzador compatible con XWayland (--x11)
-./install.sh --wm kde          # Integración con KWin y bandeja del sistema
-./install.sh --wm xfce         # Soporte dock EWMH tradicional
+# 1. Modo simulación (dry-run):
+./install.sh --dry-run         # Muestra qué se escribiría sin modificar archivos
 
-# Opciones útiles:
+# 2. Entorno probado y verificado:
+./install.sh --wm niri         # [Probado] Aplica regla anti focus-ring lavanda en niri
+
+# 3. Entornos NO PROBADOS (muestran la regla y piden confirmación [s/N] antes de escribir):
+./install.sh --wm hyprland     # [No probada] Pregunta antes de escribir en hyprland.conf
+./install.sh --wm sway         # [No probada] Pregunta antes de escribir en sway/config
+./install.sh --wm i3           # [No probada] Pregunta antes de escribir en i3/config
+./install.sh --wm bspwm        # [No probada] Pregunta antes de escribir en bspwmrc
+./install.sh --wm gnome        # [No probada] Lanzador compatible con XWayland (--x11)
+./install.sh --wm kde          # [No probada] Integración con KWin y bandeja del sistema
+./install.sh --wm xfce         # [No probada] Soporte dock EWMH tradicional
+./install.sh --wm generic      # Configuración genérica sin reglas de compositor
+
+# 4. Banderas de automatización:
 ./install.sh --autostart       # Activa inicio automático con la sesión
 ./install.sh --no-deps         # Omite instalación de paquetes del sistema
 ./install.sh --uninstall       # Elimina binarios, accesos directos e iconos
 ```
 
 ### ¿Qué hace el instalador?
-1. 📦 **Dependencias:** Comprueba paquetes según tu distro (`pacman`, `apt`, `dnf`, `zypper`).
-2. 🪟 **Reglas de WM:** Configura reglas óptimas de transparencia y foco (evitando problemas en niri, Hyprland, etc.).
-3. 🚀 **Comando Global:** Instala `maskot` en `~/.local/bin/maskot` para lanzarlo desde cualquier terminal.
-4. 🎨 **Lanzador de Escritorio:** Instala el archivo `maskot.desktop` y el icono pixel art oficial en formato SVG.
-5. 🔄 **Autostart:** Configura el inicio automático al encender tu PC si así lo decides.
+1. 🛡️ **Modo Dry-Run (`-n, --dry-run`):** Permite simular la instalación completa para auditar paquetes, rutas y reglas de ventana sin modificar nada en tu disco.
+2. 📦 **Dependencias:** Comprueba paquetes según tu distro (`pacman`, `apt`, `dnf`, `zypper`). Si faltan dependencias, te muestra el comando y solicita confirmación interactiva (`[s/N]`, nunca en silencio).
+3. 🪟 **Reglas de WM:**
+   - En **niri** *(probado)*: Aplica la regla `focus-ring { off; }` y `open-focused false`.
+   - En **Hyprland, Sway, i3, bspwm** *(no probadas)*: Muestra la regla propuesta y te pide confirmación `¿aplicar esta regla a tu config? [s/N]` antes de tocar el archivo, generando un respaldo `.bak` previo si confirmas.
+4. 🚀 **Comando Global:** Instala `maskot` en `~/.local/bin/maskot` para lanzarlo desde cualquier terminal.
+5. 🎨 **Lanzador de Escritorio:** Instala el archivo `maskot.desktop` y el icono pixel art oficial en formato SVG.
+6. 🔄 **Autostart:** Te pregunta `[s/N]` si deseas iniciar Maskot al encender tu PC.
 
 ---
 
@@ -262,7 +285,19 @@ curl -s -X POST -d '{"nombre": "tux"}' 127.0.0.1:7777/personaje
 
 Verificado en: **CachyOS + niri (Wayland) + XWayland**.
 
-| Entorno / Componente | Estado | Detalle de Verificación |
+### Compositores y Window Managers
+| Compositor / Entorno | Estado | Detalle de Verificación |
+|---|:---:|---|
+| **niri** (Wayland) | 🟢 Verificado | Regla en `cfg/rules.kdl` probada; capa `OVERLAY`, click-through y anti *focus-ring* lavanda. |
+| **Hyprland** (Wayland) | ⚠️ No probada | Reglas `layerrule` / `windowrulev2` propuestas; requiere confirmación interactiva `[s/N]`. |
+| **Sway / River** (Wayland) | ⚠️ No probada | Reglas `floating` / `sticky` propuestas; requiere confirmación interactiva `[s/N]`. |
+| **i3wm / bspwm** (X11) | ⚠️ No probada | Reglas de flotación propuestas; requiere confirmación interactiva `[s/N]`. |
+| **GNOME** (Wayland / X11) | ⚠️ No probada | Modo adaptativo XWayland (`--x11`) propuesto en lanzador. |
+| **KDE Plasma** (Wayland / X11) | ⚠️ No probada | Integración KWin propuesta sin inyección invasiva. |
+| **XFCE / MATE** (X11) | ⚠️ No probada | Integración dock EWMH tradicional propuesta. |
+
+### Componentes y Funcionalidades
+| Componente | Estado | Detalle de Verificación |
 |---|:---:|---|
 | **Wayland + layer-shell** *(Recomendado)* | 🟢 Verificado | Capa `mascota` en `OVERLAY`, teclado `NONE`. Click-through fluido con `wl_region`. |
 | **Wayland sin layer-shell** *(Fallback)* | 🟡 Funcional | Modo ventana flotante; avisa en consola y mantiene `set_input_region`. |

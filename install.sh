@@ -43,6 +43,7 @@ ARG_WM=""
 ARG_AUTOSTART=""
 ARG_DEPS=""
 ARG_UNINSTALL=0
+DRY_RUN=0
 
 # ------------------------------------------------------------------------------
 # Mensajes de estado y entrada
@@ -59,7 +60,9 @@ prompt_input() {
 
     if [ -t 0 ]; then
         read -rp "$text" val
-    elif [ -e /dev/tty ]; then
+    elif [[ -f "${BASH_SOURCE[0]:-$0}" ]] && [ -p /dev/stdin ]; then
+        read -rp "$text" val 2>/dev/null || val="$def"
+    elif [ -e /dev/tty ] && [ -r /dev/tty ]; then
         read -rp "$text" val < /dev/tty 2>/dev/null || val="$def"
     else
         val="$def"
@@ -82,7 +85,10 @@ usage() {
     echo ""
     echo "Opciones:"
     echo "  --wm <entorno>        Fuerza la configuración para un entorno específico:"
-    echo "                        [niri, hyprland, sway, i3, bspwm, gnome, kde, xfce, generic]"
+    echo "                        niri (probado)"
+    echo "                        hyprland, sway, i3, bspwm, gnome, kde, xfce (no probadas)"
+    echo "                        generic"
+    echo "  -n, --dry-run         Modo simulación: muestra qué se escribiría sin tocar nada"
     echo "  --deps                Instala dependencias automáticamente con el gestor del sistema"
     echo "  --no-deps             Omite la comprobación/instalación de dependencias del sistema"
     echo "  --autostart           Habilita inicio automático sin preguntar"
@@ -101,6 +107,10 @@ while [[ $# -gt 0 ]]; do
         --wm)
             ARG_WM="${2:-}"
             shift 2
+            ;;
+        -n|--dry-run)
+            DRY_RUN=1
+            shift
             ;;
         --deps)
             ARG_DEPS="yes"
@@ -138,6 +148,15 @@ done
 uninstall_maskot() {
     print_banner
     log_info "Desinstalando Maskot del sistema..."
+
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+        [[ -f "${BIN_DIR}/maskot" ]] && log_info "[DRY-RUN] Se eliminaría: ${BIN_DIR}/maskot"
+        [[ -f "${APPS_DIR}/maskot.desktop" ]] && log_info "[DRY-RUN] Se eliminaría: ${APPS_DIR}/maskot.desktop"
+        [[ -f "${ICONS_DIR}/maskot.svg" ]] && log_info "[DRY-RUN] Se eliminaría: ${ICONS_DIR}/maskot.svg"
+        [[ -f "${AUTOSTART_DIR}/maskot.desktop" ]] && log_info "[DRY-RUN] Se eliminaría: ${AUTOSTART_DIR}/maskot.desktop"
+        log_ok "[DRY-RUN] Simulación de desinstalación completada."
+        exit 0
+    fi
 
     if [[ -f "${BIN_DIR}/maskot" ]]; then
         rm -f "${BIN_DIR}/maskot"
@@ -265,6 +284,13 @@ install_dependencies() {
         return 0
     fi
 
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+        log_info "[DRY-RUN] Se detectaron dependencias faltantes en el sistema."
+        log_info "[DRY-RUN] Comando de instalación que se ejecutaría:"
+        echo -e "  ${CYAN}${cmd}${NC}"
+        return 0
+    fi
+
     local do_install=0
     if [[ "$ARG_DEPS" == "yes" ]]; then
         do_install=1
@@ -276,7 +302,7 @@ install_dependencies() {
         echo -e "Comando recomendado para tu distribución (${BOLD}${pm}${NC}):"
         echo -e "  ${CYAN}${cmd}${NC}"
         echo ""
-        resp="$(prompt_input "¿Deseas ejecutar este comando ahora con sudo? [S/n]: " "s")"
+        resp="$(prompt_input "¿Deseas ejecutar este comando ahora con sudo? [s/N]: " "n")"
         if [[ "$resp" =~ ^[sSyY]$ ]]; then
             do_install=1
         fi
@@ -358,16 +384,16 @@ detect_wm() {
 select_wm_interactive() {
     local detected="$1"
     echo ""
-    echo -e "${BOLD}Entornos y Window Managers disponibles para optimizar:${NC}"
-    echo "  [1] niri        (Wayland scroll-tiling: regla focus-ring lavanda)"
-    echo "  [2] Hyprland    (Wayland dynamic tiling: layerrule & pin)"
-    echo "  [3] Sway/River  (Wayland wlroots: reglas floating/sticky)"
-    echo "  [4] i3wm        (X11 tiling: floating & sticky)"
-    echo "  [5] bspwm       (X11 tiling: regla bspc floating/border)"
-    echo "  [6] GNOME       (Wayland / X11: lanzador adaptativo XWayland)"
-    echo "  [7] KDE Plasma  (Wayland / X11: soporte KWin nativo)"
-    echo "  [8] XFCE / MATE (X11 tradicional: dock EWMH estándar)"
-    echo "  [9] Genérico    (Sin reglas especiales)"
+    echo -e "${BOLD}Entornos y Window Managers disponibles:${NC}"
+    echo -e "  [1] niri        ${GREEN}[Probado]${NC}     (Wayland scroll-tiling: regla focus-ring lavanda)"
+    echo -e "  [2] Hyprland    ${YELLOW}[No probada]${NC}  (Wayland dynamic tiling: layerrule & pin)"
+    echo -e "  [3] Sway/River  ${YELLOW}[No probada]${NC}  (Wayland wlroots: reglas floating/sticky)"
+    echo -e "  [4] i3wm        ${YELLOW}[No probada]${NC}  (X11 tiling: floating & sticky)"
+    echo -e "  [5] bspwm       ${YELLOW}[No probada]${NC}  (X11 tiling: regla bspc floating/border)"
+    echo -e "  [6] GNOME       ${YELLOW}[No probada]${NC}  (Wayland / X11: lanzador adaptativo XWayland)"
+    echo -e "  [7] KDE Plasma  ${YELLOW}[No probada]${NC}  (Wayland / X11: soporte KWin nativo)"
+    echo -e "  [8] XFCE / MATE ${YELLOW}[No probada]${NC}  (X11 tradicional: dock EWMH estándar)"
+    echo -e "  [9] Genérico    (Sin reglas específicas)"
     echo ""
 
     local def_num="9"
@@ -412,17 +438,31 @@ setup_niri() {
     fi
 
     if [[ -z "$config_file" ]]; then
-        mkdir -p "${HOME}/.config/niri"
-        config_file="${HOME}/.config/niri/config.kdl"
-        touch "$config_file"
+        if [[ "$DRY_RUN" -eq 1 ]]; then
+            log_info "[DRY-RUN] Se crearía el directorio ${HOME}/.config/niri y el archivo ${HOME}/.config/niri/config.kdl"
+            config_file="${HOME}/.config/niri/config.kdl"
+        else
+            mkdir -p "${HOME}/.config/niri"
+            config_file="${HOME}/.config/niri/config.kdl"
+            touch "$config_file"
+        fi
     fi
 
     # Comprobar si ya existe la regla
-    if grep -q 'title="\^Mascota\$"' "$config_file" 2>/dev/null || grep -q 'match title="^Mascota$"' "$config_file" 2>/dev/null; then
+    if [[ -f "$config_file" ]] && (grep -q 'title="\^Mascota\$"' "$config_file" 2>/dev/null || grep -q 'match title="^Mascota$"' "$config_file" 2>/dev/null); then
         log_ok "Regla para Maskot ya presente en $config_file."
     else
-        cp "$config_file" "${config_file}.bak"
-        cat <<'KDL' >> "$config_file"
+        if [[ "$DRY_RUN" -eq 1 ]]; then
+            log_info "[DRY-RUN] Se crearía copia de respaldo: ${config_file}.bak"
+            log_info "[DRY-RUN] Se añadiría a $config_file la siguiente regla:"
+            echo -e "${CYAN}window-rule {
+    match title=\"^Mascota$\"
+    open-focused false
+    focus-ring { off; }
+}${NC}"
+        else
+            cp "$config_file" "${config_file}.bak"
+            cat <<'KDL' >> "$config_file"
 
 // Maskot - Desktop Pet Window Rules (evita focus-ring lavanda y robo de foco)
 window-rule {
@@ -431,12 +471,13 @@ window-rule {
     focus-ring { off; }
 }
 KDL
-        log_ok "Regla añadida a $config_file (copia de seguridad en ${config_file}.bak)."
+            log_ok "Regla añadida a $config_file (copia de seguridad en ${config_file}.bak)."
+        fi
     fi
 }
 
 setup_hyprland() {
-    log_info "Configurando reglas para Hyprland..."
+    log_info "Configurando reglas para Hyprland (entorno no probado)..."
     local config_file="${HOME}/.config/hypr/hyprland.conf"
 
     if [[ ! -f "$config_file" ]]; then
@@ -446,23 +487,41 @@ setup_hyprland() {
 
     if grep -q 'title:\^(Mascota)\$' "$config_file" 2>/dev/null; then
         log_ok "Reglas para Maskot ya presentes en $config_file."
-    else
-        cp "$config_file" "${config_file}.bak"
-        cat <<'CONF' >> "$config_file"
+        return
+    fi
 
-# --- Maskot - Desktop Pet Rules ---
+    local regla="# --- Maskot - Desktop Pet Rules ---
 layerrule = noanim, ^(mascota)$
 windowrulev2 = float, title:^(Mascota)$
 windowrulev2 = pin, title:^(Mascota)$
 windowrulev2 = noblur, title:^(Mascota)$
-windowrulev2 = nofocus, title:^(Mascota)$
-CONF
+windowrulev2 = nofocus, title:^(Mascota)$"
+
+    echo ""
+    log_warn "Hyprland no ha sido verificado activamente (compatibilidad no probada)."
+    echo -e "Regla propuesta para ${BOLD}$config_file${NC}:"
+    echo -e "${CYAN}${regla}${NC}"
+    echo ""
+
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+        log_info "[DRY-RUN] Se crearía copia ${config_file}.bak y se añadiría la regla anterior (no se tocó nada)."
+        return
+    fi
+
+    local resp
+    resp="$(prompt_input "¿aplicar esta regla a tu config? [s/N]: " "n")"
+    if [[ "$resp" =~ ^[sSyY]$ ]]; then
+        cp "$config_file" "${config_file}.bak"
+        echo "" >> "$config_file"
+        echo "$regla" >> "$config_file"
         log_ok "Reglas añadidas a $config_file (copia de respaldo: ${config_file}.bak)."
+    else
+        log_info "Omitiendo modificación de $config_file a petición del usuario."
     fi
 }
 
 setup_sway() {
-    log_info "Configurando reglas para Sway..."
+    log_info "Configurando reglas para Sway / River (entorno no probado)..."
     local config_file="${HOME}/.config/sway/config"
 
     if [[ ! -f "$config_file" ]]; then
@@ -472,19 +531,37 @@ setup_sway() {
 
     if grep -q 'title="\^Mascota\$"' "$config_file" 2>/dev/null; then
         log_ok "Regla para Maskot ya presente en $config_file."
-    else
-        cp "$config_file" "${config_file}.bak"
-        cat <<'CONF' >> "$config_file"
+        return
+    fi
 
-# --- Maskot - Desktop Pet Rules ---
-for_window [title="^Mascota$"] floating enable, sticky enable, border none, focus_follows_mouse no
-CONF
-        log_ok "Regla añadida a $config_file."
+    local regla="# --- Maskot - Desktop Pet Rules ---
+for_window [title=\"^Mascota$\"] floating enable, sticky enable, border none, focus_follows_mouse no"
+
+    echo ""
+    log_warn "Sway no ha sido verificado activamente (compatibilidad no probada)."
+    echo -e "Regla propuesta para ${BOLD}$config_file${NC}:"
+    echo -e "${CYAN}${regla}${NC}"
+    echo ""
+
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+        log_info "[DRY-RUN] Se crearía copia ${config_file}.bak y se añadiría la regla anterior (no se tocó nada)."
+        return
+    fi
+
+    local resp
+    resp="$(prompt_input "¿aplicar esta regla a tu config? [s/N]: " "n")"
+    if [[ "$resp" =~ ^[sSyY]$ ]]; then
+        cp "$config_file" "${config_file}.bak"
+        echo "" >> "$config_file"
+        echo "$regla" >> "$config_file"
+        log_ok "Regla añadida a $config_file (copia de respaldo: ${config_file}.bak)."
+    else
+        log_info "Omitiendo modificación de $config_file a petición del usuario."
     fi
 }
 
 setup_i3() {
-    log_info "Configurando reglas para i3wm..."
+    log_info "Configurando reglas para i3wm (entorno no probado)..."
     local config_file="${HOME}/.config/i3/config"
 
     if [[ ! -f "$config_file" ]]; then
@@ -494,19 +571,37 @@ setup_i3() {
 
     if grep -q 'title="\^Mascota\$"' "$config_file" 2>/dev/null; then
         log_ok "Regla para Maskot ya presente en $config_file."
-    else
-        cp "$config_file" "${config_file}.bak"
-        cat <<'CONF' >> "$config_file"
+        return
+    fi
 
-# --- Maskot - Desktop Pet Rules ---
-for_window [title="^Mascota$"] floating enable, sticky enable, border none
-CONF
-        log_ok "Regla añadida a $config_file."
+    local regla="# --- Maskot - Desktop Pet Rules ---
+for_window [title=\"^Mascota$\"] floating enable, sticky enable, border none"
+
+    echo ""
+    log_warn "i3wm no ha sido verificado activamente (compatibilidad no probada)."
+    echo -e "Regla propuesta para ${BOLD}$config_file${NC}:"
+    echo -e "${CYAN}${regla}${NC}"
+    echo ""
+
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+        log_info "[DRY-RUN] Se crearía copia ${config_file}.bak y se añadiría la regla anterior (no se tocó nada)."
+        return
+    fi
+
+    local resp
+    resp="$(prompt_input "¿aplicar esta regla a tu config? [s/N]: " "n")"
+    if [[ "$resp" =~ ^[sSyY]$ ]]; then
+        cp "$config_file" "${config_file}.bak"
+        echo "" >> "$config_file"
+        echo "$regla" >> "$config_file"
+        log_ok "Regla añadida a $config_file (copia de respaldo: ${config_file}.bak)."
+    else
+        log_info "Omitiendo modificación de $config_file a petición del usuario."
     fi
 }
 
 setup_bspwm() {
-    log_info "Configurando reglas para bspwm..."
+    log_info "Configurando reglas para bspwm (entorno no probado)..."
     local config_file="${HOME}/.config/bspwm/bspwmrc"
 
     if [[ ! -f "$config_file" ]]; then
@@ -516,30 +611,48 @@ setup_bspwm() {
 
     if grep -q 'bspc rule -a Mascota' "$config_file" 2>/dev/null; then
         log_ok "Regla para Maskot ya presente en $config_file."
-    else
-        cp "$config_file" "${config_file}.bak"
-        cat <<'CONF' >> "$config_file"
+        return
+    fi
 
-# --- Maskot - Desktop Pet Rules ---
-bspc rule -a Mascota state=floating sticky=on border=off focus=off
-CONF
-        log_ok "Regla añadida a $config_file."
+    local regla="# --- Maskot - Desktop Pet Rules ---
+bspc rule -a Mascota state=floating sticky=on border=off focus=off"
+
+    echo ""
+    log_warn "bspwm no ha sido verificado activamente (compatibilidad no probada)."
+    echo -e "Regla propuesta para ${BOLD}$config_file${NC}:"
+    echo -e "${CYAN}${regla}${NC}"
+    echo ""
+
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+        log_info "[DRY-RUN] Se crearía copia ${config_file}.bak y se añadiría la regla anterior (no se tocó nada)."
+        return
+    fi
+
+    local resp
+    resp="$(prompt_input "¿aplicar esta regla a tu config? [s/N]: " "n")"
+    if [[ "$resp" =~ ^[sSyY]$ ]]; then
+        cp "$config_file" "${config_file}.bak"
+        echo "" >> "$config_file"
+        echo "$regla" >> "$config_file"
+        log_ok "Regla añadida a $config_file (copia de respaldo: ${config_file}.bak)."
+    else
+        log_info "Omitiendo modificación de $config_file a petición del usuario."
     fi
 }
 
 setup_gnome() {
-    log_info "Configuración para GNOME detectada."
-    log_info "Mutter (GNOME Wayland) no incluye protocolo layer-shell por defecto."
+    log_info "Configuración para GNOME (entorno no probado)."
+    log_warn "Mutter (GNOME Wayland) no incluye protocolo layer-shell por defecto."
     log_info "El lanzador de Maskot aplicará automáticamente el modo compatible XWayland (--x11)."
 }
 
 setup_kde() {
-    log_info "Configuración para KDE Plasma detectada."
+    log_info "Configuración para KDE Plasma (entorno no probado)."
     log_ok "KWin Wayland gestiona ventanas layer-shell nativamente sin reglas obligatorias."
 }
 
 setup_xfce() {
-    log_info "Configuración para XFCE detectada."
+    log_info "Configuración para XFCE (entorno no probado)."
     log_ok "XFCE gestiona docks EWMH nativamente."
 }
 
@@ -548,6 +661,19 @@ setup_xfce() {
 # ------------------------------------------------------------------------------
 install_system_files() {
     log_info "Instalando lanzador y archivos de integración..."
+
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+        log_info "[DRY-RUN] Se crearía el ejecutable wrapper: ${BIN_DIR}/maskot"
+        log_info "[DRY-RUN] Se copiaría el icono SVG a: ${ICONS_DIR}/maskot.svg"
+        log_info "[DRY-RUN] Se instalaría el lanzador de escritorio: ${APPS_DIR}/maskot.desktop"
+        if command -v update-desktop-database >/dev/null 2>&1; then
+            log_info "[DRY-RUN] Se actualizaría la base de datos desktop (${APPS_DIR})"
+        fi
+        if command -v gtk-update-icon-cache >/dev/null 2>&1; then
+            log_info "[DRY-RUN] Se actualizaría la caché de iconos (${HOME}/.local/share/icons/hicolor)"
+        fi
+        return
+    fi
 
     mkdir -p "${BIN_DIR}" "${APPS_DIR}" "${ICONS_DIR}" "${AUTOSTART_DIR}"
 
@@ -614,15 +740,19 @@ setup_autostart() {
         enable_auto=1
     elif [[ "$ARG_AUTOSTART" == "no" ]]; then
         enable_auto=0
+    elif [[ "$DRY_RUN" -eq 1 ]]; then
+        log_info "[DRY-RUN] Se preguntaría por inicio automático al usuario (omitido en dry-run)."
+        return
     else
         echo ""
-        resp="$(prompt_input "¿Deseas que Maskot se inicie automáticamente al encender tu PC? [S/n]: " "s")"
+        resp="$(prompt_input "¿Deseas que Maskot se inicie automáticamente al encender tu PC? [s/N]: " "n")"
         if [[ "$resp" =~ ^[sSyY]$ ]]; then
             enable_auto=1
         fi
     fi
 
     if [[ "$enable_auto" -eq 1 ]]; then
+        mkdir -p "${AUTOSTART_DIR}"
         cp "${SCRIPT_DIR}/assets/maskot.desktop" "${AUTOSTART_DIR}/maskot.desktop"
         log_ok "Inicio automático configurado en: ${AUTOSTART_DIR}/maskot.desktop"
     else
@@ -651,18 +781,42 @@ main() {
         target_wm="$(select_wm_interactive "$detected")"
     fi
 
-    log_info "Aplicando perfil para: ${BOLD}${target_wm}${NC}"
-
     case "$target_wm" in
-        niri)     setup_niri ;;
-        hyprland) setup_hyprland ;;
-        sway|river) setup_sway ;;
-        i3)       setup_i3 ;;
-        bspwm)    setup_bspwm ;;
-        gnome)    setup_gnome ;;
-        kde)      setup_kde ;;
-        xfce)     setup_xfce ;;
-        generic)  log_info "Usando configuración genérica." ;;
+        niri)
+            log_info "Aplicando perfil para: ${BOLD}${target_wm}${NC} ${GREEN}[Probado]${NC}"
+            setup_niri
+            ;;
+        hyprland)
+            log_info "Aplicando perfil para: ${BOLD}${target_wm}${NC} ${YELLOW}[No probada]${NC}"
+            setup_hyprland
+            ;;
+        sway|river)
+            log_info "Aplicando perfil para: ${BOLD}${target_wm}${NC} ${YELLOW}[No probada]${NC}"
+            setup_sway
+            ;;
+        i3)
+            log_info "Aplicando perfil para: ${BOLD}${target_wm}${NC} ${YELLOW}[No probada]${NC}"
+            setup_i3
+            ;;
+        bspwm)
+            log_info "Aplicando perfil para: ${BOLD}${target_wm}${NC} ${YELLOW}[No probada]${NC}"
+            setup_bspwm
+            ;;
+        gnome)
+            log_info "Aplicando perfil para: ${BOLD}${target_wm}${NC} ${YELLOW}[No probada]${NC}"
+            setup_gnome
+            ;;
+        kde)
+            log_info "Aplicando perfil para: ${BOLD}${target_wm}${NC} ${YELLOW}[No probada]${NC}"
+            setup_kde
+            ;;
+        xfce)
+            log_info "Aplicando perfil para: ${BOLD}${target_wm}${NC} ${YELLOW}[No probada]${NC}"
+            setup_xfce
+            ;;
+        generic)
+            log_info "Usando configuración genérica."
+            ;;
         *)
             log_warn "Entorno '$target_wm' no reconocido. Usando configuración genérica."
             ;;
@@ -673,6 +827,17 @@ main() {
 
     # 4. Configurar autostart
     setup_autostart
+
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+        echo ""
+        echo -e "${YELLOW}═══════════════════════════════════════════════════════════${NC}"
+        echo -e "${BOLD}✨ [DRY-RUN] SIMULACIÓN COMPLETADA (NO SE TOCÓ NADA) ✨${NC}"
+        echo -e "${YELLOW}═══════════════════════════════════════════════════════════${NC}"
+        echo ""
+        echo "Para aplicar los cambios reales en el sistema, ejecuta el instalador sin '--dry-run'."
+        echo ""
+        return
+    fi
 
     echo ""
     echo -e "${GREEN}═══════════════════════════════════════════════════════════${NC}"
