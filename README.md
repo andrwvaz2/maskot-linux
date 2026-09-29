@@ -29,21 +29,6 @@
 
 ---
 
-## 📟 Panel de Control Retro & Especificaciones
-
-```text
-  ▼ STATS & DASHBOARD ▼
-  ┌──────────────────────────────┬────────────────────────────────────────┐
-  │         ▄▄▄▄▄▄▄▄▄▄           │ PERSONAJE:   Maskot                    │
-  │       ▄████████████▄         │ ESPECIE:     Mascota de Escritorio     │
-  │      ████████████████        │ ESTADO:      Beta (Fase 2)             │
-  │      ██  ██    ██  ██        │ CLICK-THROUGH: 100% Nativo             │
-  │      ████████████████        │ MOTOR:       Python 3 + GTK4 + Cairo   │
-  │      ████  ████  ████        │ FPS ACTIVO:  20 FPS                    │
-  │       ▀████████████▀         │ FPS SIESTA:  5 FPS (Ahorro de batería) │
-  │         ▀▀▀▀▀▀▀▀▀▀           │ CONSUMO CPU: 0.1% ~ 1.0% en reposo     │
-  │          █        █          │ DISPLAY:     Wayland (Layer-Shell) / X11│
-  └──────────────────────────────┴────────────────────────────────────────┘
 ```
 
 ### 🎭 Elenco de Personajes (9 Mascotas Disponibles)
