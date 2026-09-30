@@ -50,7 +50,7 @@ Puedes cambiar de compañero en cualquier momento desde el submenú de la bandej
 ## ⚡ Características Principales
 
 - 🪟 **Ventana Transparente con Click-Through Real:** La ventana flota en pantalla sin marcos ni fondo. El puntero del ratón atraviesa todo el espacio vacío (`Gdk.Surface.set_input_region`), interactuando únicamente cuando haces clic sobre el sprite o sobre su globo de diálogo.
-- 🤖 **Rutinas Autónomas Dinámicas:** Motor con pesos probabilísticos que decide qué hacer cada 20–40 segundos (pasear, escribir código en su laptop, leer en una banca, dormir siestas o tomar un café).
+- 🤖 **Rutinas Autónomas Dinámicas:** Motor con pesos probabilísticos que decide qué hacer cada 20–40 segundos (pasear, escribir código en su laptop, leer en una banca, dormir siestas, tomar un café, echar una hoja a la papelera, regar la plantita o respirar).
 - 🍅 **Temporizador Pomodoro:** Modos `25/5`, `45/10` y `50/10`. La mascota sincroniza sus acciones según la fase: programa o lee en tiempo de trabajo, y toma café en los descansos.
 - 🧘 **Pausa Activa (Salud Postural):** Tras 50 minutos de uso continuo, Maskot inicia una cuenta regresiva (3, 2, 1) y ejecuta una pose de estiramiento guiado de 6 segundos.
 - 💬 **Globo de Texto Vectorial (Cairo):** Renderizado con sombra y rabito direccional. El área del globo se suma a la región de entrada para permitir interacción con el mensaje.
@@ -73,19 +73,31 @@ Maskot ejecuta secuencias de micro-acciones de forma autónoma:
   ║  • LEER BANCA   : Coloca una banca de madera y saca su libro pixel art.     ║
   ║  • ECHAR CÓDIGO : Abre su mini laptop y se pone a programar contigo.        ║
   ║  • CAFÉ BREAK   : Disfruta de una taza humeante en los descansos Pomodoro.  ║
+  ║  • HOJA A PAPELERA: Recoge una hoja del suelo y la tira a una papelera.     ║
+  ║  • PLANTITA     : Riega su maceta; crece según los días de uso que llevas.  ║
+  ║  • RESPIRAR     : Cuenta atrás 3-2-1 y dos rondas de inhalar/exhalar.       ║
   ║  • SALTO REACTIVO: ¡Hazle clic en cualquier momento para saludar!           ║
   ╚═════════════════════════════════════════════════════════════════════════════╝
 ```
+
+> [!TIP]
+> ¿Quieres ver una rutina concreta sin esperar a que salga al azar? Lánzala forzada
+> al arrancar: `MASKOT_DEMO=matica:loop python3 main.py` (o `python3 main.py --demo
+> matica:loop`). Sin `:loop` la ejecuta una sola vez. El nombre de la rutina
+> también se puede forzar en caliente desde la API: `curl -d '{"nombre":
+> "respiracion"}' 127.0.0.1:7777/rutina`.
 
 ### Primitivas del Motor (`rutinas.py`)
 
 | Acción | Efecto |
 |---|---|
-| `ir_a(x)` | Desplaza el sprite a la posición horizontal `x` (`None` para destino aleatorio). |
+| `ir_a(x, al_llegar=…)` | Desplaza el sprite a la posición horizontal `x` (`None` para destino aleatorio). Con `al_llegar=True` la rutina continúa en cuanto llega. |
 | `decir(texto, ms)` | Muestra un texto en el globo de diálogo durante `ms` milisegundos. |
 | `cara(nombre, ms)` | Cambia la expresión del rostro: `feliz`, `cansado`, `pensar`. |
-| `esperar(ms, pose=…)` | Pausa en el lugar con una pose (`siesta`, `leer`, `codigo`). |
-| `objeto(nombre, x=…)` | Coloca o retira un elemento del escenario (`banca`, `libro`, `taza`, `portatil`). |
+| `esperar(ms, pose=…, texto=…)` | Pausa en el lugar con una pose (`siesta`, `leer`, `codigo`, `regar`, `respirar`) y, si se le pasa `texto`, lo muestra mientras espera. |
+| `objeto(nombre, x=…, y=…)` | Coloca o mueve un elemento del escenario (`banca`, `libro`, `taza`, `portatil`, `papelera`, `hoja`, `regadera`, `planta_*`). |
+| `quitar(nombre)` | Retira un solo objeto y deja los demás donde estaban. |
+| `cuenta_atras(n, ms, texto)` | Cuenta `3…2…1` en el globo. Es la misma cuenta que usa la pausa activa (`pausa.CuentaAtras`). |
 | `saltar()` | Efectúa un salto elástico con animación. |
 | `fin()` | Finaliza la rutina y cede el turno al selector aleatorio. |
 
@@ -119,7 +131,7 @@ Las preferencias se almacenan automáticamente en `~/.config/mascota/prefs.json`
   "api_puerto": 7777
 }
 ```
-- `dias_uso`: Contador de días naturales en los que has utilizado la app.
+- `dias_uso`: Contador de días naturales en los que has utilizado la app. También marca en qué etapa está la plantita de la rutina `matica`: hasta 2 días es una semilla, a partir del tercero un brote y del día 15 en adelante florecida. Al regarla da un estirón y crece una etapa (hasta florecida).
 
 ---
 
@@ -216,8 +228,17 @@ Si prefieres ejecutar Maskot sin instalarlo en el sistema, puedes usar directame
 
 O lanzamiento manual con Python:
 ```bash
-python3 main.py [--x11] [--scale N]
+python3 main.py [--x11] [--scale N] [--demo RUTINA[:loop]]
+                [--monitor CONECTOR|ÍNDICE] [--list-monitores]
 ```
+
+Opciones y su equivalente como variable de entorno:
+
+| Flag | Variable | Qué hace |
+|---|---|---|
+| `--demo matica:loop` | `MASKOT_DEMO=matica:loop` | Arranca esa rutina al abrir la ventana; `:loop` la repite. |
+| `--monitor HDMI-A-1` / `--monitor 1` | `MASKOT_MONITOR=HDMI-A-1` | Fija en qué monitor se dibuja la barra (por defecto, el primero que vea GDK). |
+| `--list-monitores` | — | Lista los conectores disponibles y sale. |
 
 ---
 
@@ -267,7 +288,13 @@ curl -s -X POST -d '{"nombre": "tux"}' 127.0.0.1:7777/personaje
 
 ## 🗺️ Matriz de Compatibilidad
 
-Verificado en: **CachyOS + niri (Wayland) + XWayland**.
+Verificado internamente en: **CachyOS + niri (Wayland) + XWayland**.
+
+Leyenda de la columna *Estado*:
+
+- 🟢 **Verificado**: reproducido y comprobado por el equipo.
+- 📌 **Reporte de comunidad**: confirmado por un usuario externo; **no** se ha reproducido ni verificado internamente.
+- 🟡 / ⚠️ / 🔴: funcional parcial, sin probar o pendiente.
 
 ### Compositores y Window Managers
 | Compositor / Entorno | Estado | Detalle de Verificación |
@@ -278,15 +305,16 @@ Verificado en: **CachyOS + niri (Wayland) + XWayland**.
 | **i3wm / bspwm** (X11) | ⚠️ No probada | Reglas de flotación propuestas; requiere confirmación interactiva `[s/N]`. |
 | **GNOME** (Wayland / X11) | ⚠️ No probada | Modo adaptativo XWayland (`--x11`) propuesto en lanzador. |
 | **KDE Plasma** (Wayland / X11) | ⚠️ No probada | Integración KWin propuesta sin inyección invasiva. |
-| **XFCE / MATE** (X11) | ⚠️ No probada | Integración dock EWMH tradicional propuesta. |
+| **XFCE** (X11) | 📌 Reporte de comunidad | Alguien reporta que **corre correctamente**. **Sin detalles técnicos ni verificación interna, y sin referencia enlazada**: no consta versión de XFCE, versión de Maskot ni si usó sesión X11 nativa o `--x11`. No tomar como cobertura probada. |
+| **MATE** (X11) | ⚠️ No probada | Integración dock EWMH tradicional propuesta. |
 
 ### Componentes y Funcionalidades
 | Componente | Estado | Detalle de Verificación |
 |---|:---:|---|
-| **Wayland + layer-shell** *(Recomendado)* | 🟢 Verificado | Capa `mascota` en `OVERLAY`, teclado `NONE`. Click-through fluido con `wl_region`. |
+| **Wayland + layer-shell** *(Recomendado)* | 🟢 Verificado | Capa `mascota` en `OVERLAY`, teclado `NONE`, superficie a todo el ancho del monitor (por defecto el primer monitor de GDK; configurable con `--monitor`/`MASKOT_MONITOR`). Click-through fluido con `wl_region`. |
 | **Wayland sin layer-shell** *(Fallback)* | 🟡 Funcional | Modo ventana flotante; avisa en consola y mantiene `set_input_region`. |
 | **X11 / XWayland** | 🟢 Verificado | Shape recortado al sprite y globo. Inyección de clic XTest verificada. |
-| **Rutinas y Objetos** | 🟢 Verificado | Las 5 rutinas completan su ciclo (banca, libro, laptop, taza, siesta). |
+| **Rutinas y Objetos** | 🟢 Verificado | Las 8 rutinas completan su ciclo (banca, libro, laptop, taza, siesta, papelera, plantita, respiración). Secuencias comprobadas sin ventana; las 3 nuevas a falta de revisión visual en pantalla. |
 | **Globo de Diálogo** | 🟢 Verificado | Renderizado Cairo nítido con sombra y rabito direccional. |
 | **Temporizador Pomodoro** | 🟡 Parcial | Estados, cambios de fase y avisos probados; falta prueba continua de 50 min. |
 | **Bandeja de Estado (DBus)** | 🟡 Parcial | Árbol de submenús `GetLayout` y eventos validados vía DBus. |
@@ -297,6 +325,45 @@ Verificado en: **CachyOS + niri (Wayland) + XWayland**.
 ---
 
 ## 🔬 Notas de Desarrollo & Hacks del Sistema
+
+<details>
+<summary><b>📐 Monitor y ancho de la barra en Wayland (layer-shell) (Clic para desplegar)</b></summary>
+<br>
+
+**Síntoma (ya corregido):** la ventana medía 200 px de ancho (lo reportaba el propio dibujo como `window_width=200`) en vez de cubrir el monitor, así que la mascota solo se movía por los primeros 136 px y los objetos de las rutinas se quedaban fuera de la ventana.
+
+**Causa:** `gtk4-layer-shell` no expone `set_size`: pide el tamaño a la ventana con `gtk_window_get_default_size` y lo manda como tamaño de la layer-surface. Al llamar a `set_default_size(0, alto)` GTK resuelve el ancho 0 a su mínimo, que son 200 px, y esa es la superficie que acaba usando el compositor aunque esté anclada a izquierda y derecha.
+
+**Corrección:** `WaylandBackend._dimensionar()` pide el ancho real de la salida (`Gdk.Monitor.get_geometry()`) para que la barra cubra el monitor entero, igual que hace el backend X11.
+
+### En cuál monitor se dibuja
+
+- **Por defecto usa el primero de la lista de GDK**, es decir `get_monitors()[0]`. **No** es "el monitor enfocado" ni un monitor "principal".
+- Ojo: en GTK 4.22 no existe `Gdk.Monitor.is_primary()`, y **el orden de `get_monitors()` lo impone el compositor** (el orden en que anuncia sus salidas), así que **puede cambiar entre sesiones o al conectar/desconectar pantallas**. Por eso el valor por defecto no es estable en multi-monitor; para eso está la opción de abajo.
+- La misma salida se usa para medir el ancho y para fijar la ventana (`set_monitor`), de modo que las dos cosas no se contradigan.
+
+#### Cómo elegir monitor
+
+Primero, listar los conectores:
+
+```bash
+python3 main.py --list-monitores
+```
+
+```text
+[0] HDMI-A-1     1920x1080+0+0  DELL SE2425H (Dell Inc.)
+[1] eDP-1       1920x1080+0+0  Panel Built-in (LG Display)
+```
+
+Y luego fijarlo, por conector o por índice (funciona en los dos backends):
+
+```bash
+MASKOT_MONITOR=HDMI-A-1 python3 main.py    # por conector
+python3 main.py --monitor 1               # por índice (equivalente)
+```
+
+El conector se puede poner en minúsculas y abreviado como prefijo (`hdmi` → `HDMI-A-1`). Si el nombre no existe o el índice está fuera de rango, sale un aviso con la lista de conectores y se usa el primero de la lista.
+</details>
 
 <details>
 <summary><b>⚠️ Estado de la Detección de Inactividad en Wayland (Clic para desplegar)</b></summary>
@@ -348,8 +415,8 @@ window-rule {
 ```text
 mascota/
 ├── main.py              # Bucle principal, renderizado Cairo, coordinación y eventos
-├── rutinas.py           # Motor de micro-acciones y catálogo de las 5 rutinas
-├── objetos.py           # Sprites pixel art de objetos (banca, libro, portátil, taza)
+├── rutinas.py           # Motor de micro-acciones y catálogo de las 8 rutinas
+├── objetos.py           # Sprites pixel art de objetos (banca, libro, portátil, taza, papelera, hoja, regadera, plantita)
 ├── globo.py             # Globo de texto Cairo con rabito direccional y sombra
 ├── pomodoro.py          # Lógica del temporizador Pomodoro (25/5, 45/10, 50/10)
 ├── pausa.py             # Máquina de estados de pausa activa y auto-test en Wayland
