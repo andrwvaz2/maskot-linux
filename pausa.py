@@ -15,6 +15,9 @@ Dos formas de obtenerlo:
 
 Si no hay ninguna de las dos, la pausa activa se desactiva y se dice por consola
 en vez de fingir que funciona.
+
+La cuenta atrás 3-2-1 vive en la clase `CuentaAtras` de este módulo, que también
+usa la rutina `respiracion` de `rutinas.py`.
 """
 
 from __future__ import annotations
@@ -396,6 +399,58 @@ def crear_detector():
     return det if det.disponible else None
 
 
+class CuentaAtras:
+    """Cuenta atrás numérica reutilizable (3-2-1) sobre el globo de la mascota.
+
+    La usan tanto la pausa activa como la rutina `respiracion` de `rutinas.py`,
+    de modo que el "3, 2, 1" es el mismo código y no dos implementaciones.
+    `tick` avanza por milisegundos acumulados (no por consultas), así que la
+    misma clase sirve para el detector de 1 Hz de la pausa y para el bucle de
+    la mascota, que va a 20 FPS.
+    """
+
+    def __init__(self, pet, desde=CUENTA_ATRAS, ms_por_numero=1000,
+                 plantilla="Estiramiento en {n}…", duracion_globo=900):
+        self.pet = pet
+        self.desde = int(desde)
+        self.ms_por_numero = max(1, int(ms_por_numero))
+        self.plantilla = plantilla
+        self.duracion_globo = int(duracion_globo)
+        self.valor = 0          # número que se está mostrando (0 = terminada)
+        self._actual = 0
+        self._restante = 0
+
+    @property
+    def activo(self):
+        return self.valor > 0
+
+    def iniciar(self):
+        self.valor = self._actual = self.desde
+        self._restante = self.ms_por_numero
+        self._mostrar(self.desde)
+        return self
+
+    def parar(self):
+        self.valor = self._actual = 0
+        self._restante = 0
+
+    def _mostrar(self, n):
+        self.pet.globo.mostrar(self.plantilla.format(n=n), self.duracion_globo)
+
+    def tick(self, dt_ms):
+        """Avanza la cuenta. Devuelve True mientras queden números por pasar."""
+        if not self.activo:
+            return False
+        self._restante -= int(dt_ms)
+        while self._restante <= 0 and self._actual > 0:
+            self._restante += self.ms_por_numero
+            self._actual -= 1
+            self.valor = self._actual
+            if self._actual > 0:
+                self._mostrar(self._actual)
+        return self.activo
+
+
 class PausaActiva:
     """Propone un estiramiento guiado tras 50 min de uso continuo."""
 
@@ -405,8 +460,7 @@ class PausaActiva:
         self.minutos = minutos
         self.detector = crear_detector() if activo else None
         self.estado = "vigilando" if self.detector else "sin detector"
-        self.cuenta_atras = 0
-        self._ms_cuenta = 0
+        self._cuenta = CuentaAtras(pet, desde=CUENTA_ATRAS, ms_por_numero=1000)
         self._seg_estiramiento = 0
         self._inicio_racha = time.monotonic()
         self._idle_actual = 0
@@ -415,6 +469,11 @@ class PausaActiva:
             print("[pausa] no hay forma de consultar la inactividad "
                   "(ni ext-idle-notify-v1 ni MIT-SCREEN-SAVER); "
                   "la pausa activa queda desactivada")
+
+    @property
+    def cuenta_atras(self):
+        """Número de la cuenta en curso (0 si no hay ninguna)."""
+        return self._cuenta.valor
 
     # -- ciclo ---------------------------------------------------------------
 
@@ -440,13 +499,10 @@ class PausaActiva:
                 self._iniciar_cuenta_atras()
 
         elif self.estado == "cuenta_atras":
-            self._ms_cuenta -= 1
-            if self._ms_cuenta <= 0:
+            # Esta clase consulta el detector una vez por segundo, así que cada
+            # `tick` vale un segundo de la cuenta.
+            if not self._cuenta.tick(1000):
                 self._iniciar_estiramiento()
-            else:
-                self.cuenta_atras = self._ms_cuenta
-                self.pet.globo.mostrar(f"Estiramiento en {self._ms_cuenta}…",
-                                       900)
 
         elif self.estado == "estirando":
             self._seg_estiramiento -= 1
@@ -457,19 +513,19 @@ class PausaActiva:
 
     def _iniciar_cuenta_atras(self):
         self.estado = "cuenta_atras"
-        self._ms_cuenta = CUENTA_ATRAS
-        self.cuenta_atras = CUENTA_ATRAS
         self.pet.cancelar_rutina("pausa activa")
         self.pet.globo.mostrar(
             f"Llevas {self.minutos} min seguidos. Estírate en {CUENTA_ATRAS}…",
-            1200)
+            1200
+        )
+        self._cuenta.iniciar()
         print(f"[pausa] {self.minutos} min de uso continuo: estiramiento guiado")
         self.pet.on_cambio()
 
     def _iniciar_estiramiento(self):
         self.estado = "estirando"
         self._seg_estiramiento = DURACION_ESTIRAMIENTO_SEG
-        self.cuenta_atras = 0
+        self._cuenta.parar()
         self.pet.globo.mostrar("Estiramos un poco: brazos arriba", 4000)
         self.pet.poner_pose("estirar")
         print("[pausa] estiramiento en curso")
@@ -477,7 +533,7 @@ class PausaActiva:
 
     def _fin(self, motivo):
         self.estado = "vigilando"
-        self.cuenta_atras = 0
+        self._cuenta.parar()
         self._inicio_racha = time.monotonic()
         self.pet.poner_pose(None)
         print(f"[pausa] fin de la pausa activa ({motivo})")
