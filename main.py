@@ -4,7 +4,16 @@ Fase 1: ventana flotante, transparente y con click-through.
 Fase 2: rutinas, globo de texto, pomodoro, pausa activa, API HTTP y preferencias.
 
 Uso:
-    python3 main.py [--x11] [--scale N]
+    python3 main.py [--x11] [--scale N] [--demo RUTINA[:loop]]
+                    [--monitor CONECTOR|ÍNDICE] [--list-monitores]
+
+`--demo` (o la variable de entorno `MASKOT_DEMO`) arranca una rutina concreta al
+abrir la ventana, para poder verla en pantalla: `MASKOT_DEMO=matica:loop
+python3 main.py` la repite cada 2,5 s.
+
+`--monitor` (o `MASKOT_MONITOR`) fija en qué monitor se dibuja la barra, por
+conector (`HDMI-A-1`) o por índice (`1`). Sin él se usa el primero que anuncie
+GDK. `--list-monitores` muestra los conectores disponibles.
 
 El backend se elige según el entorno ($XDG_SESSION_TYPE / $XDG_CURRENT_DESKTOP):
 - Wayland con layer-shell (Sway, Hyprland, niri, river, ...) -> gtk4-layer-shell.
@@ -55,6 +64,7 @@ JUMP_TICKS = 8                  # duración del salto (8 ticks = 0.4 s)
 MS_POR_TICK = 50                # referencia de movimiento del motor
 INTERVALO_MENU_MS = 1000       # cada cuánto se refresca el menú de la bandeja
 MS_SNAPSHOT_API = 500           # cada cuánto se refresca la instantánea HTTP
+ESPERA_DEMO_MS = 2500           # pausa entre repeticiones del modo demo
 
 # IDs del menú de la bandeja (compartidos con la API interna).
 ID_TOGGLE = 1
@@ -65,10 +75,10 @@ ID_POM_INICIAR = 14
 ID_POM_PAUSAR = 15
 ID_POM_SALTAR = 16
 ID_RUT_ESTADO = 20
-ID_RUT_BASE = 21                # 21..24 -> las cuatro rutinas
-ID_RUT_ALEATORIA = 25
+ID_RUT_BASE = 21                # 21..28 -> las rutinas del catálogo
+ID_RUT_ALEATORIA = 29
 ID_PERSONAJE_ESTADO = 30
-ID_PERSONAJE_BASE = 31          # 31..34
+ID_PERSONAJE_BASE = 31          # 31..39 (los 9 personajes)
 ID_API = 40
 ID_POMODORO_PAUSA = 41
 
@@ -76,6 +86,51 @@ ID_POMODORO_PAUSA = 41
 def window_height_for(scale):
     # sprite (16*scale) + espacio de salto (8*scale) + margen inferior
     return 16 * scale + 8 * scale + 4
+
+
+def listar_monitores():
+    """`python3 main.py --list-monitores`: imprime los conectores disponibles.
+
+    Sirve para saber qué valor pasarle a `MASKOT_MONITOR` o `--monitor`.
+    """
+    try:
+        Gtk.init()
+    except Exception as exc:  # noqa: BLE001  (sin display no hay lista que dar)
+        print(f"No hay display para listar monitores: {exc}", file=sys.stderr)
+        return 1
+    display = Gdk.Display.get_default()
+    monitores = display.get_monitors() if display is not None else []
+    if not monitores:
+        print("GDK no ve ningún monitor.")
+        return 1
+    for i, m in enumerate(monitores):
+        g = m.get_geometry()
+        print(f"[{i}] {m.get_connector() or '?':<12} {g.width}x{g.height}"
+              f"+{g.x}+{g.y}  {m.get_model() or ''} ({m.get_manufacturer() or ''})")
+    print("\nPara fijar uno:  MASKOT_MONITOR=<conector o índice> python3 main.py")
+    print("                python3 main.py --monitor <conector o índice>")
+    return 0
+
+
+def _leer_demo(bruto):
+    """Interpreta el valor de `--demo` / $MASKOT_DEMO.
+
+    Acepta `nombre_rutina` (una pasada) o `nombre_rutina:loop` (se repite cada
+    pocos segundos, para poder mirarla bien). Devuelve (nombre, bucle) o None.
+    """
+    texto = (bruto or "").strip()
+    if not texto:
+        return None
+    bucle = False
+    for sufijo in (":loop", ":bucle", ":repetir"):
+        if texto.lower().endswith(sufijo):
+            texto, bucle = texto[: -len(sufijo)].strip(), True
+            break
+    if texto not in RUTINAS:
+        print(f"[demo] rutina desconocida: {texto!r}. Disponibles: "
+              f"{', '.join(RUTINAS)}")
+        return None
+    return texto, bucle
 
 
 def detect_backend(force_x11):
@@ -104,11 +159,13 @@ def detect_backend(force_x11):
 
 
 class Mascota:
-    def __init__(self, backend_name, scale):
+    def __init__(self, backend_name, scale, demo=None, monitor=None):
         self.backend_name = backend_name
         self.scale = scale
         self.window_height = window_height_for(scale)
         self.sprite = sp.Sprite(scale)
+        self.demo = demo                # (nombre, bucle) o None
+        self.monitor_opcion = monitor  # conector o índice; "" = el primero
 
         self.backend = None
         self.tray = None
@@ -179,6 +236,12 @@ class Mascota:
         print(f"[mascota] personaje: {self.prefs.personaje} | "
               f"días de uso: {self.prefs.dias_uso}")
 
+        if self.demo:
+            # Se espera a que la ventana esté dibujada: hasta el primer
+            # `on_draw` el motor no conoce el ancho y colocaría mal los
+            # objetos de la rutina.
+            GLib.timeout_add(300, self._arrancar_demo)
+
         self.loop = GLib.MainLoop()
         try:
             self.loop.run()
@@ -188,6 +251,30 @@ class Mascota:
             if self.tray is not None:
                 self.tray.shutdown()
 
+    # ------------------------------------------------------------ modo demo
+
+    def _arrancar_demo(self):
+        """Fuerza una rutina al arrancar, para poder verla en pantalla.
+
+        Con `--demo rutina` se ejecuta una vez; con `--demo rutina:loop` se
+        repite cada `ESPERA_DEMO_MS` (y el selector aleatorio se aparta para
+        que no se mezcle con otra rutina).
+        """
+        nombre, bucle = self.demo
+        print(f"[demo] forzando la rutina '{nombre}'"
+              f"{' en bucle' if bucle else ''} (Ctrl+C para salir)")
+        self.motor.iniciar(nombre)
+        if bucle:
+            GLib.timeout_add(ESPERA_DEMO_MS, self._repetir_demo)
+        return False       # el timeout es de una sola vez
+
+    def _repetir_demo(self):
+        if self.motor.activo:
+            return True
+        print("[demo] repetindo")
+        self.motor.iniciar(self.demo[0])
+        return True
+
     def _build_window(self):
         self.window = Gtk.Window()
         self.window.set_title("Mascota")
@@ -196,20 +283,98 @@ class Mascota:
         self.drawing_area.set_draw_func(self.on_draw)
         self.window.set_child(self.drawing_area)
 
+    @staticmethod
+    def _log_monitores(monitores):
+        """Una línea con los conectores que ve GDK (para poder elegir uno)."""
+        partes = []
+        for i, m in enumerate(monitores):
+            g = m.get_geometry()
+            partes.append(f"[{i}] {m.get_connector() or '?'} "
+                          f"{g.width}x{g.height}+{g.x}+{g.y}")
+        print(f"[main] monitores: {', '.join(partes)}")
+
+    @staticmethod
+    def _buscar_monitor(monitores, opcion):
+        """Busca un monitor por índice o por conector. None si no hay coincidencia.
+
+        Acepta el número (`1`) o el conector (`HDMI-A-1`, `eDP`), en minúsculas
+        o no, y como prefijo: `eDP` vale para `eDP-1`. Si no hay coincidencia
+        avisa y devuelve None para que el llamante use el primero.
+        """
+        if opcion.isdigit():
+            indice = int(opcion)
+            if 0 <= indice < len(monitores):
+                return monitores[indice]
+            print(f"[main] el índice {opcion} no existe (hay de 0 a "
+                  f"{len(monitores) - 1}); se usa el primero de la lista")
+            return None
+
+        minusculas = opcion.lower()
+        exactos = [m for m in monitores
+                   if (m.get_connector() or "").lower() == minusculas]
+        parciales = [m for m in monitores
+                     if minusculas in (m.get_connector() or "").lower()]
+        candidatos = exactos or parciales
+        if len(candidatos) == 1:
+            return candidatos[0]
+        if len(candidatos) > 1:
+            nombres = ", ".join(m.get_connector() or "?" for m in candidatos)
+            print(f"[main] '{opcion}' encaja con varios monitores ({nombres}); "
+                  "se usa el primero")
+            return candidatos[0]
+        disponibles = ", ".join(m.get_connector() or "?" for m in monitores)
+        print(f"[main] no existe el monitor '{opcion}'. Disponibles: "
+              f"{disponibles}. Se usa el primero de la lista.")
+        return None
+
+    @staticmethod
+    def _elegir_monitor(display, opcion=None):
+        """Decide en qué monitor va la barra (la comparten los dos backends).
+
+        Sin `opcion` (MASKOT_MONITOR / --monitor vacíos) se usa el primero de
+        la lista de GDK, como se ha hecho siempre. Ojo: **no** es el monitor
+        enfocado ni un "principal": en GTK 4.22 no existe `Gdk.Monitor
+        .is_primary()` y el orden de la lista lo impone el compositor (el orden
+        de anuncio de sus salidas), así que puede cambiar entre sesiones o al
+        conectar/desconectar pantallas. Para fijar uno, pasa su conector o su
+        índice.
+        """
+        if display is None:
+            return None
+        monitores = display.get_monitors()
+        if not monitores:
+            print("[main] GDK no ve ningún monitor")
+            return None
+        Mascota._log_monitores(monitores)
+
+        opcion = (opcion or "").strip()
+        if not opcion:
+            return monitores[0]
+        elegido = Mascota._buscar_monitor(monitores, opcion)
+        if elegido is not None:
+            print(f"[main] monitor elegido con --monitor/MASKOT_MONITOR: "
+                  f"{elegido.get_connector() or '?'}")
+            return elegido
+        return monitores[0]
+
     def _setup_backend(self):
+        monitor = self._elegir_monitor(Gdk.Display.get_default(),
+                                       self.monitor_opcion)
         if self.backend_name == "x11":
             self.backend = X11Backend(self.window)
-            self._configure_x11_geometry()
+            self._configure_x11_geometry(monitor)
         else:
-            self.backend = WaylandBackend(self.window)
-            self.window.set_default_size(0, self.window_height)
+            # El ancho de la barra lo fija el backend (ver
+            # WaylandBackend._dimensionar): la layer-surface necesita el ancho
+            # del monitor, no el de GTK por defecto.
+            self.backend = WaylandBackend(self.window,
+                                          height=self.window_height,
+                                          monitor=monitor)
 
         self.backend.setup()
 
-    def _configure_x11_geometry(self):
+    def _configure_x11_geometry(self, monitor):
         """Tamaño y posición del dock X11 según el monitor primario."""
-        display = Gdk.Display.get_default()
-        monitor = self._primary_monitor(display)
         if monitor is None:
             return
         geo = monitor.get_geometry()
@@ -219,16 +384,6 @@ class Mascota:
         self.window.set_default_size(geo.width, height)
         # El backend moverá la ventana con XMoveWindow al mapearse.
         self.backend.pending_move = (x, y, geo.width, height)
-
-    @staticmethod
-    def _primary_monitor(display):
-        if display is None:
-            return None
-        monitors = display.get_monitors()
-        if not monitors:
-            return None
-        # GDK4 no expone "monitor primario"; usamos el primero (suele bastar).
-        return monitors[0]
 
     def _apply_transparent_css(self):
         css = b"window { background-color: transparent; }"
@@ -357,6 +512,10 @@ class Mascota:
         # Pomodoro (y rutina que le acompaña).
         self.pomodoro.tick(dt)
         # Rutinas.
+        if self.demo:
+            # En modo demo la rutina del catálogo manda: el selector aleatorio
+            # espera para que no se mezcle con lo que se quiere ver.
+            self.motor.proxima_ms = max(self.motor.proxima_ms, 15000)
         self.motor.tick(dt)
         self.motor.mover(dt)
         # Globo de texto.
@@ -590,7 +749,7 @@ class Mascota:
                     for n, info in RUTINAS.items()
                 ],
                 "acciones": ["ir_a", "decir", "cara", "esperar", "objeto",
-                             "saltar", "fin"],
+                             "quitar", "cuenta_atras", "saltar", "fin"],
             }
         # Validación rápida (aquí no se toca GTK, solo datos).
         if accion in ("aviso", "decir") and not str(datos.get("texto", "")).strip():
@@ -682,7 +841,21 @@ def main(argv=None):
                         help="forzar el backend X11 (XWayland)")
     parser.add_argument("--scale", type=int, default=4,
                         help="escala de la grilla 16x16 (por defecto 4)")
+    parser.add_argument("--demo", default=os.environ.get("MASKOT_DEMO", ""),
+                        metavar="RUTINA[:loop]",
+                        help="arranca esa rutina al abrir la ventana "
+                             "(también se puede con MASKOT_DEMO)")
+    parser.add_argument("--monitor", default=os.environ.get("MASKOT_MONITOR", ""),
+                        metavar="CONECTOR|ÍNDICE",
+                        help="monitor donde va la barra, p. ej. HDMI-A-1 o 1 "
+                             "(también se puede con MASKOT_MONITOR); por "
+                             "defecto, el primero que vea GDK")
+    parser.add_argument("--list-monitores", action="store_true",
+                        help="lista los monitores/conectores y sale")
     args = parser.parse_args(argv)
+
+    if args.list_monitores:
+        return listar_monitores()
 
     # GDK lee $GDK_BACKEND al abrir el display, y eso ocurre al inicializar GTK,
     # que ya está cargado cuando estamos aquí. Por eso, si piden --x11 sin la
@@ -698,7 +871,8 @@ def main(argv=None):
           f"XDG_CURRENT_DESKTOP={os.environ.get('XDG_CURRENT_DESKTOP')!r}")
     print(f"[main] backend elegido: {backend_name} ({reason})")
 
-    Mascota(backend_name, args.scale).run()
+    Mascota(backend_name, args.scale, demo=_leer_demo(args.demo),
+            monitor=args.monitor).run()
     return 0
 
 
