@@ -46,6 +46,11 @@ class Globo:
     def visible(self):
         return self.ms_restantes > 0 and bool(self.texto)
 
+    @property
+    def desvanecido(self):
+        """True en el último 25 % de su vida, cuando la opacidad cambia."""
+        return self.visible and self.ms_restantes < self.ms_totales * 0.25
+
     def mostrar(self, texto, ms=3500, x=0.0, y=0.0):
         """Pone texto en el globo durante `ms` milisegundos."""
         texto = (texto or "").strip()

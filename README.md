@@ -142,6 +142,21 @@ Las preferencias se almacenan automáticamente en `~/.config/mascota/prefs.json`
 - **pycairo**
 - **gtk4-layer-shell** (requerido para Wayland mediante el protocolo `zwlr_layer_shell_v1`)
 
+> [!IMPORTANT]
+> **Si usas GNOME:** en las dos rutas (instalada con `install.sh`, que fuerza XWayland, o `./run.sh` directo, que cae al fallback Wayland) **no te aparecerá el ícono de bandeja**: GNOME no incluye un `StatusNotifierWatcher`, así que hay que instalar la extensión de GNOME Shell
+> **“AppIndicator and KStatusNotifierItem Support”**.
+>
+> ```bash
+> # Buscar la extensión (necesitas las GNOME Shell Extensions habilitadas):
+> sudo apt install gnome-shell-extension-appindicator   # Debian/Ubuntu
+> # o: sudo dnf install gnome-shell-extension-appindicator   # Fedora
+> ```
+> Ten en cuenta que son **dos rutas distintas**: el comando `maskot` instalado por
+> `install.sh` **fuerza `--x11`** en GNOME+Wayland (va por XWayland con EWMH), y
+> `./run.sh` sin `--x11` se queda en la ventana normal de Wayland, sin anclar.
+> Sin la extensión, el menú (pomodoro, rutinas, personaje, API) sigue
+> funcionando por la API HTTP, pero no hay forma de abrirlo con el ratón.
+
 ---
 
 ## ⚡ Instalación Rápida & Configurador Multi-WM
@@ -151,7 +166,9 @@ Maskot incluye un instalador interactivo [install.sh](file:///home/andrw/mascota
 > [!WARNING]
 > **Estado de compatibilidad por entorno:**
 > - **niri (+ XWayland):** 🟢 **Probado** activamente en el entorno de desarrollo.
-> - **Hyprland, Sway, i3, bspwm, GNOME, KDE, XFCE:** ⚠️ **No probadas**.
+> - **GNOME (instalado con `install.sh`):** 📌 **Reporte de comunidad**: funciona por la ruta **X11/XWayland**, porque el lanzador instalado fuerza `--x11` en GNOME+Wayland. Sin ícono de bandeja salvo que instales la extensión *AppIndicator and KStatusNotifierItem Support*.
+> - **GNOME ( `./run.sh` directo, sin `--x11`):** ⚠️ **No probada**: cae al fallback nativo (ventana normal de Wayland, sin anclar).
+> - **Hyprland, Sway, i3, bspwm, KDE, XFCE:** ⚠️ **No probadas**.
 > El instalador **nunca aplicará reglas en silencio ni modificará tu configuración sin tu permiso expreso**: te mostrará la regla propuesta y te preguntará `¿aplicar esta regla a tu config? [s/N]` (por defecto **No**). Para paquetes del sistema, también te solicitará confirmación (`[s/N]`).
 
 ### Opción A — Modo simulación sin tocar el sistema (`--dry-run`):
@@ -239,6 +256,7 @@ Opciones y su equivalente como variable de entorno:
 | `--demo matica:loop` | `MASKOT_DEMO=matica:loop` | Arranca esa rutina al abrir la ventana; `:loop` la repite. |
 | `--monitor HDMI-A-1` / `--monitor 1` | `MASKOT_MONITOR=HDMI-A-1` | Fija en qué monitor se dibuja la barra (por defecto, el primero que vea GDK). |
 | `--list-monitores` | — | Lista los conectores disponibles y sale. |
+| — (solo `run.sh`) | `MASKOT_LAYER_SHELL_LIB=/ruta/libgtk4-layer-shell.so` | Fuerza la ruta de la librería que `run.sh` precarga; si está mal puesta, avisa y sigue sin precargar. |
 
 ---
 
@@ -303,7 +321,8 @@ Leyenda de la columna *Estado*:
 | **Hyprland** (Wayland) | ⚠️ No probada | Reglas `layerrule` / `windowrulev2` propuestas; requiere confirmación interactiva `[s/N]`. |
 | **Sway / River** (Wayland) | ⚠️ No probada | Reglas `floating` / `sticky` propuestas; requiere confirmación interactiva `[s/N]`. |
 | **i3wm / bspwm** (X11) | ⚠️ No probada | Reglas de flotación propuestas; requiere confirmación interactiva `[s/N]`. |
-| **GNOME** (Wayland / X11) | ⚠️ No probada | Modo adaptativo XWayland (`--x11`) propuesto en lanzador. |
+| **GNAME Wayland** vía instalador (`maskot` de `install.sh`) | 📌 Reporte de comunidad | Confirmado por un usuario externo: **funciona**, pero por la ruta **X11/XWayland**, no por el fallback nativo. Ojo: el lanzador que genera el instalador **añade `--x11` a propósito** en GNOME+Wayland (`install.sh`, bloque *“En GNOME Wayland, forzar --x11…”*), así que `main.py` arranca con el backend X11 (`detect_backend` → `forzado con --x11`) y usa EWMH/`XMoveWindow` sobre XWayland. Dos **limitaciones confirmadas** en ese entorno: la **pausa activa queda desactivada** (XWayland no expone `MIT-SCREEN-SAVER`) y el **ícono de bandeja no aparece**, porque GNOME no trae `StatusNotifierWatcher`: hace falta instalar la extensión *AppIndicator and KStatusNotifierItem Support* de GNOME Shell. Sin verificar internamente; la colocación de la ventana vía `XMoveWindow` sobre XWayland tampoco está comprobada (ver limitaciones). |
+| **GNOME Wayland** con `./run.sh` directo, sin `--x11` | ⚠️ No probada | Ruta **distinta** a la anterior y sin ningún reporte: el backend se queda en `wayland`, `gtk4-layer-shell` no puede inicializarse (GNOME no habla `zwlr_layer_shell_v1`) y la app cae al **fallback nativo: una ventana normal de Wayland, sin anclar y sin estar encima**. El click-through seguiría funcionando (`wl_region`), pero la ventana no queda abajo del todo. Si alguien la prueba, documéntelo aquí. |
 | **KDE Plasma** (Wayland / X11) | ⚠️ No probada | Integración KWin propuesta sin inyección invasiva. |
 | **XFCE** (X11) | 📌 Reporte de comunidad | Alguien reporta que **corre correctamente**. **Sin detalles técnicos ni verificación interna, y sin referencia enlazada**: no consta versión de XFCE, versión de Maskot ni si usó sesión X11 nativa o `--x11`. No tomar como cobertura probada. |
 | **MATE** (X11) | ⚠️ No probada | Integración dock EWMH tradicional propuesta. |
@@ -403,7 +422,13 @@ window-rule {
 <summary><b>🧩 Detalles de Enlace, Bandeja y Fuentes (Clic para desplegar)</b></summary>
 <br>
 
-- **Orden de Enlace de `gtk4-layer-shell`:** Debe cargarse antes de `libwayland`. `run.sh` lo soluciona precargando la librería con `LD_PRELOAD`.
+- **Orden de Enlace de `gtk4-layer-shell`:** Debe cargarse antes de `libwayland`. `run.sh` lo soluciona solo, con `LD_PRELOAD`. La ruta **no es la misma en todas las distros**, así que en vez de suponerla la busca: primero pregunta a `ldconfig` (que dice la ruta real de la caché del cargador), luego hace un `find` en `/usr/lib`, `/usr/lib64`, `/lib`, `/lib64`, `/usr/local/lib` y los directorios multiarch (`/usr/lib/<triplet>-linux-gnu`), y en último caso prueba las rutas conocidas a una. En Arch cae en `/usr/lib/…`, en Fedora en `/usr/lib64/…` y en Debian/Ubuntu en el multiarch. Si no la encuentra, avisa y sigue sin precargar; si la tienes en un sitio raro, se le dice dónde está:
+
+  ```bash
+  MASKOT_LAYER_SHELL_LIB=/opt/lib/libgtk4-layer-shell.so ./run.sh
+  ```
+
+  Con `--x11` o en sesión X11 no se precarga nada, porque esa ruta no usa la librería.
 - **Bandeja sin librerías obsoletas:** Se evita `libayatana-appindicator` (ligada a GTK3). En su lugar, `tray.py` implementa el protocolo StatusNotifierItem nativamente vía DBus con `Gio`.
 - **Tipografía "Toy" de Cairo:** Los globos utilizan la API tipográfica ligera de Cairo para no acarrear dependencias de Pango.
 </details>

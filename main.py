@@ -58,6 +58,7 @@ from tray import Tray  # noqa: E402
 FPS = 20
 TICK_MS = int(1000 / FPS)      # ~50 ms
 FPS_DORMIDO = 5                # la siesta va a 5 FPS para no gastar CPU
+FPS_TICKS_BAJAR = 3            # ticks seguidos quieto antes de bajar a 5 FPS
 SPEED = 4                       # px por tick (a 20 FPS = 80 px/s)
 FRAME_INTERVAL = 3              # ticks entre cambio de cuadro de caminata
 JUMP_TICKS = 8                  # duración del salto (8 ticks = 0.4 s)
@@ -200,6 +201,12 @@ class Mascota:
         self._ultimo_pausa_ms = 0
         self._ultimo_snapshot_ms = 0
         self._ultimo_globo_ms = 0
+        # Redibujado y frecuencia adaptativa
+        self._firma_previa = None     # firma visual del último frame pintado
+        self._frame_cache = None      # frame elegido en este tick
+        self._x_previo = None         # x del tick anterior (¿se mueve?)
+        self._fps_candidato = None
+        self._fps_ticks = 0
 
         # personaje elegido en preferencias
         self._aplicar_personaje(self.prefs.personaje)
@@ -466,14 +473,23 @@ class Mascota:
         for nombre, (ox, oy) in self.motor.objetos.items():
             objetos.dibujar(cr, nombre, ox, oy, self.scale)
 
-        # 2) El sprite, con la pose que toque ahora mismo.
-        frame = self.motor.frame_actual(self._frame_paseo())
-        if self.pose_extra == "estirar":
-            frame = self.sprite.frame_estirar
-        self.sprite.draw(cr, frame)
+        # 2) El sprite, con la pose que toque ahora mismo. El frame se elige
+        #    una sola vez por tick y se cachea: elegirlo tiene efectos
+        #    secundarios (las "Zzz" de la siesta alternan), así que llamarlo
+        #    otra vez aquí cambiaría lo que se ve.
+        self.sprite.draw(cr, self._frame_a_dibujar())
 
         # 3) El globo de texto encima.
         self.globo.dibujar(cr, self.sprite.rect(), width)
+
+    def _frame_a_dibujar(self):
+        """El frame que toca ahora mismo (con caché por tick)."""
+        if self._frame_cache is None:
+            frame = self.motor.frame_actual(self._frame_paseo())
+            if self.pose_extra == "estirar":
+                frame = self.sprite.frame_estirar
+            self._frame_cache = frame
+        return self._frame_cache
 
     def _frame_paseo(self):
         if self.state == "jump":
@@ -504,10 +520,74 @@ class Mascota:
         self._tick_id = GLib.timeout_add(self._intervalo_actual, self._tick)
         self._ultimo_tick_ms = self._ahora_ms()
 
+    # ------------------------------------------- redibujado y FPS adaptativa
+
+    def _firma_visual(self):
+        """Huella de todo lo que afecta a los píxeles del frame siguiente.
+
+        Si la firma no cambia, el frame sería idéntico y no hay que pedir
+        repintado. Cubre: posición y color del sprite, el frame elegido (que
+        ya incluye la pose y la cara), los objetos de la escena, la pose extra
+        de la pausa activa y el estado del globo (incluido su desvanecido,
+        que cambia su opacidad cada tick).
+        """
+        globo = self.globo
+        return (
+            round(self.sprite.x, 2),
+            round(self.sprite.y, 2),
+            self.sprite.direction,
+            self.sprite.body_index,
+            id(self._frame_a_dibujar()),
+            self.pose_extra,
+            globo.visible,
+            globo.texto,
+            # Solo cuenta el tiempo restante cuando el globo se está
+            # desvaneciendo: mientras no lo esté, su opacidad es constante y
+            # el frame es idéntico (si no, se repintaría en cada tick).
+            globo.ms_restantes if globo.desvanecido else 0,
+            tuple(sorted(self.motor.objetos.items())),
+        )
+
+    def _hay_animacion(self):
+        """¿Hay algo cambiando píxeles de forma continua ahora mismo?"""
+        if self.state == "jump":
+            return True
+        if self._x_previo is not None and abs(self.sprite.x - self._x_previo) > 0.01:
+            return True
+        if self.globo.desvanecido:
+            return True
+        return False
+
+    def _ajustar_fps(self):
+        """20 FPS si algo se mueve; 5 FPS si la mascota está quieta.
+
+        Es el mismo mecanismo que usa la siesta (`poner_fps`), pero aplicado a
+        cualquier momento en el que no haya nada que animar: los pasos
+        `esperar` de las rutinas, o la mascota quieta con el globo parado.
+        Sube a 20 FPS en cuanto hay movimiento (al instante, para no meter
+        tirón) y baja a 5 FPS tras varios ticks quieto (para no oscilar).
+        """
+        objetivo = FPS if self._hay_animacion() else FPS_DORMIDO
+        if objetivo == self.fps_objetivo:
+            self._fps_candidato = None
+            self._fps_ticks = 0
+            return
+        if objetivo != self._fps_candidato:
+            self._fps_candidato = objetivo
+            self._fps_ticks = 1
+        else:
+            self._fps_ticks += 1
+        # Al subir es inmediato; al bajar espera a ver que es de verdad.
+        if objetivo == FPS or self._fps_ticks >= FPS_TICKS_BAJAR:
+            self.poner_fps(objetivo)
+            self._fps_candidato = None
+            self._fps_ticks = 0
+
     def _tick(self):
         ahora = self._ahora_ms()
         dt = max(1, min(2000, ahora - self._ultimo_tick_ms))
         self._ultimo_tick_ms = ahora
+        self._frame_cache = None      # el frame se elige una vez por tick
 
         # Pomodoro (y rutina que le acompaña).
         self.pomodoro.tick(dt)
@@ -540,7 +620,14 @@ class Mascota:
 
         if self.backend is not None:
             self.backend.set_input_region(self._rectangulos_entrada())
-        self.drawing_area.queue_draw()
+
+        # Frecuencia adaptativa y repintado solo si algo cambió de verdad.
+        self._ajustar_fps()
+        self._x_previo = self.sprite.x
+        firma = self._firma_visual()
+        if firma != self._firma_previa:
+            self._firma_previa = firma
+            self.drawing_area.queue_draw()
         return True
 
     def _rectangulos_entrada(self):

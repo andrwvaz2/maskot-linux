@@ -203,7 +203,7 @@ RUTINAS = {
         "peso": 2,
         "titulo": "Pasear",
         "pasos": lambda rng: [
-            ir_a(rng.randrange(40, 900)),
+            ir_a(rng.randrange(40, 900), al_llegar=True),
             esperar(900),
             decir(rng.choice(["de paseo", "qué día más", "hacia el fondo"]),
                   2600),
@@ -216,7 +216,7 @@ RUTINAS = {
         "peso": 3,
         "titulo": "Siesta",
         "pasos": lambda rng: [
-            ir_a(rng.randrange(40, 900)),
+            ir_a(rng.randrange(40, 900), al_llegar=True),
             esperar(400),
             decir("una siesta corta…", 2400),
             esperar(16000, pose="siesta"),
@@ -227,7 +227,7 @@ RUTINAS = {
         "peso": 2,
         "titulo": "Leer en la banca",
         "pasos": lambda rng: [
-            ir_a(rng.randrange(60, 700)),
+            ir_a(rng.randrange(60, 700), al_llegar=True),
             objeto("banca"),
             esperar(500),
             objeto("libro"),
@@ -241,7 +241,7 @@ RUTINAS = {
         "peso": 1,
         "titulo": "Echar código",
         "pasos": lambda rng: [
-            ir_a(rng.randrange(40, 900)),
+            ir_a(rng.randrange(40, 900), al_llegar=True),
             objeto("portatil"),
             esperar(400),
             esperar(13000, pose="codigo"),
