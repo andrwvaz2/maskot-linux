@@ -474,9 +474,26 @@ Este proyecto es una **implementación original e independiente para Linux** esc
 
 ---
 
+## ☕ Apoyo
+
+Si disfrutas usando **Maskot** y quieres apoyar el desarrollo de nuevas funciones y personajes:
+
+<div align="center">
+
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/L3N4285WES)
+
+</div>
+
+---
+
 <div align="center">
 
 **¿Listo para probarlo? ¡Lanza `./run.sh` en tu terminal!**  
 *Desarrollado con ☕, píxeles y cariño por el software libre.*
 
+<br/><br/>
+
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/L3N4285WES)
+
 </div>
+
