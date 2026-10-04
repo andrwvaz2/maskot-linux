@@ -474,6 +474,18 @@ Este proyecto es una **implementación original e independiente para Linux** esc
 
 ---
 
+## 👥 Contribuidores & Comunidad
+
+¡Las contribuciones, ideas y mejoras son más que bienvenidas! Consulta la [guía de contribución](CONTRIBUTING.md) y el listado de reconocimientos en [CONTRIBUTORS.md](CONTRIBUTORS.md).
+
+<p align="center">
+  <a href="https://github.com/andrwvaz2/maskot-linux/graphs/contributors">
+    <img src="https://contrib.rocks/image?repo=andrwvaz2/maskot-linux" alt="Contribuidores de Maskot" />
+  </a>
+</p>
+
+---
+
 ## ☕ Apoyo
 
 Si disfrutas usando **Maskot** y quieres apoyar el desarrollo de nuevas funciones y personajes:
