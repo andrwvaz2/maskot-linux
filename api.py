@@ -8,6 +8,7 @@
 Rutas:
     GET  /estado      -> instantánea del estado (JSON)
     GET  /rutinas     -> catálogo de rutinas
+    GET  /logros      -> logros desbloqueados y estado del sistema
     POST /aviso       -> {"texto": "..."}          aviso corto en el globo
     POST /decir       -> {"texto": "...", "ms": 4000}
     POST /rutina      -> {"nombre": "pasear"}
@@ -72,6 +73,8 @@ class ApiLocal:
                     self._responder(200, api.proveedor_estado())
                 elif ruta == "/rutinas":
                     self._responder(200, api.manejador_acciones("listar_rutinas", {}))
+                elif ruta == "/logros":
+                    self._responder(200, api.manejador_acciones("listar_logros", {}))
                 else:
                     self._responder(404, {"error": f"ruta desconocida: {ruta}"})
 
@@ -125,7 +128,7 @@ class ApiLocal:
         self._hilo.start()
         self.activo = True
         self.log(f"[api] escuchando en http://{HOST}:{self.puerto} "
-                 "(GET /estado, /rutinas; POST /aviso, /decir, /rutina, /pomodoro)")
+                 "(GET /estado, /rutinas, /logros; POST /aviso, /decir, /rutina, /pomodoro)")
         return True
 
     def parar(self):

@@ -6,9 +6,13 @@ dato que usan los salvapantallas.
 
 Dos formas de obtenerlo:
 
-- Wayland: protocolo `ext-idle-notify-v1`. Se habla directamente con
-  `libwayland-client` por ctypes porque no hay binding de Python instalado. El
-  aviso de "el usuario lleva X ms quieto" lo emite el compositor.
+- Wayland (preferida): DBus `org.gnome.Mutter.IdleMonitor` (GNOME), vía
+  `Gio.DBusProxy`, sin ctypes: pregunta el tiempo de inactividad con
+  `GetIdletime()` y es la primera vía que se prueba en Wayland.
+- Wayland (respaldo): protocolo `ext-idle-notify-v1`. Se habla directamente
+  con `libwayland-client` por ctypes porque no hay binding de Python
+  instalado. El aviso de "el usuario lleva X ms quieto" lo emite el
+  compositor.
 - X11: extensión `MIT-SCREEN-SAVER` (`XScreenSaverQueryInfo`). Ojo: XWayland no
   expone esa extensión, así que en una sesión Wayland con `--x11` esta vía no
   funciona (se avisa por consola y la pausa activa queda desactivada).
@@ -380,6 +384,60 @@ class WaylandIdle:
         self._dpy = None
 
 
+
+# ---------------------------------------------------------------------------
+# Wayland: DBus org.gnome.Mutter.IdleMonitor (GNOME)
+# ---------------------------------------------------------------------------
+
+class DBusIdle:
+    """Tiempo de inactividad vía DBus (GNOME Mutter), sin ctypes.
+
+    Import perezoso de Gio dentro de ``__init__`` para no romper
+    ``python3 pausa.py --selftest`` ni la importación sin GTK. Solo se
+    considera disponible si la primera llamada a ``GetIdletime`` funciona;
+    si falla, ``idle_ms()`` devuelve el último valor cacheado (0 si nunca
+    hubo uno).
+    """
+
+    def __init__(self):
+        self.nombre = "DBus/Mutter.IdleMonitor"
+        self.disponible = False
+        self.error = None
+        self._proxy = None
+        self._ultimo_ms = 0
+        try:
+            from gi.repository import Gio
+            bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+            self._proxy = Gio.DBusProxy.new_sync(
+                bus, Gio.DBusProxyFlags.NONE, None,
+                "org.gnome.Mutter.IdleMonitor",
+                "/org/gnome/Mutter/IdleMonitor",
+                "org.gnome.Mutter.IdleMonitor", None)
+            self._ultimo_ms = self._consultar()
+            self.disponible = True
+        except Exception as exc:  # noqa: BLE001
+            self.error = str(exc)
+            print(f"[pausa] DBus IdleMonitor no disponible: {exc}")
+
+    def _consultar(self):
+        from gi.repository import Gio
+        resultado = self._proxy.call_sync(
+            "GetIdletime", None, Gio.DBusCallFlags.NONE, 500, None)
+        valores = resultado.unpack()
+        if isinstance(valores, (list, tuple)):
+            return int(valores[0])
+        return int(valores)
+
+    def idle_ms(self):
+        if not self.disponible:
+            return 0
+        try:
+            self._ultimo_ms = self._consultar()
+        except Exception as exc:  # noqa: BLE001
+            print(f"[pausa] DBus IdleMonitor falló: {exc}")
+        return int(self._ultimo_ms)
+
+
 # ---------------------------------------------------------------------------
 
 def crear_detector():
@@ -392,6 +450,11 @@ def crear_detector():
         return det if det.disponible else None
 
     if sesion == "wayland":
+        # DBus (Mutter) primero: más seguro, sin ctypes. Si no está, se cae
+        # a ext-idle-notify-v1 como antes.
+        det = DBusIdle()
+        if det.disponible:
+            return det
         det = WaylandIdle()
         return det if det.disponible else None
 
@@ -467,7 +530,8 @@ class PausaActiva:
         if activo and self.detector is None:
             self.activo = False
             print("[pausa] no hay forma de consultar la inactividad "
-                  "(ni ext-idle-notify-v1 ni MIT-SCREEN-SAVER); "
+                  "(ni DBus/Mutter, ni ext-idle-notify-v1, "
+                  "ni MIT-SCREEN-SAVER); "
                   "la pausa activa queda desactivada")
 
     @property

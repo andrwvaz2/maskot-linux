@@ -1,0 +1,62 @@
+{
+  "id": "gato",
+  "nombre": "Mishi",
+  "desc": "Un gato naranja curioso",
+  "paleta": {
+    "c": "#E07A3F",
+    "C": "#FFF2DD",
+    "1": "#F58594",
+    "2": "#B45309",
+    "O": "#111827"
+  },
+  "cuerpo": [
+    ".O............O.",
+    ".OO..........OO.",
+    ".OcO........OcO.",
+    ".OccOOOOOOOOccO.",
+    ".OccCCCCCCCCccO.",
+    ".OccCCCCCCCCccO.",
+    ".OccCCCCCCCCccO.",
+    ".OccCCCCCCCCccO.",
+    ".OccCCCCCCCCccO.",
+    ".OccCCCCCCCCccO.",
+    ".OccCCCCCCCCccO.",
+    "..OccCCCCCCccO..",
+    "...OOOOOOOOOO...",
+    "..OccCCCCCCccO..",
+    "...O11O..O11O...",
+    "...O22O..O22O..."
+  ],
+  "cara_neutro": {
+    "5": ".OccC5oCC5oCccO.",
+    "6": ".OccCooCCooCccO."
+  },
+  "caras": {
+    "feliz": {
+      "5": ".OccCooCCooCccO.",
+      "6": ".OccCo.oCCo.oCcO",
+      "7": ".OccCCCrrCCCCcO."
+    },
+    "cansado": {
+      "5": ".OccCooCCooCccO.",
+      "6": ".OccCCCCCCCCccO."
+    },
+    "pensar": {
+      "5": ".OccC5oCCCCCCcO.",
+      "6": ".OccCooCCCCCCcO."
+    }
+  },
+  "patas_fila": 15,
+  "paso1": [
+    3,
+    4,
+    5,
+    6
+  ],
+  "paso2": [
+    10,
+    11,
+    12,
+    13
+  ]
+}

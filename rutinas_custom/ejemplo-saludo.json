@@ -1,0 +1,21 @@
+{
+  "nombre": "saludo_ejemplo",
+  "titulo": "Saludo de ejemplo",
+  "peso": 1,
+  "solo_fases": null,
+  "pasos": [
+    {
+      "tipo": "decir",
+      "texto": "¡Hola! Soy una rutina personalizada",
+      "ms": 3000
+    },
+    {
+      "tipo": "cara",
+      "nombre": "feliz",
+      "ms": 2000
+    },
+    {
+      "tipo": "saltar"
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 """Sprite en pixel art (grilla 16x16) dibujado con Cairo.
 
 Admite múltiples personajes (Tux y la familia Koru: Koru, Clawd, Tuno, Nilo,
-Brio, Luma, Mako, Orbi). Cada personaje define su propia grilla 16x16 y su
+Brio, Luma, Mako, Orbi, y Pancito el croissant). Cada personaje define su propia grilla 16x16 y su
 paleta de colores propia en `personajes.py`.
 """
 

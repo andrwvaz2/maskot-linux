@@ -40,6 +40,7 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Gdk", "4.0")
 from gi.repository import Gdk, GLib, Gtk  # noqa: E402
 
+import logros  # noqa: E402
 import objetos  # noqa: E402
 import personajes  # noqa: E402
 import sprite as sp  # noqa: E402
@@ -51,6 +52,7 @@ from pausa import PausaActiva  # noqa: E402
 from pomodoro import FORMATOS, FASE_TRABAJO, Pomodoro  # noqa: E402
 from preferencias import PERSONAJES, Preferencias  # noqa: E402
 from rutinas import RUTINAS, MotorRutinas  # noqa: E402
+from sistema import bateria, musica_actual, tocar_nota  # noqa: E402
 from tray import Tray  # noqa: E402
 
 # --- Parámetros de la animación --------------------------------------------
@@ -76,12 +78,14 @@ ID_POM_INICIAR = 14
 ID_POM_PAUSAR = 15
 ID_POM_SALTAR = 16
 ID_RUT_ESTADO = 20
-ID_RUT_BASE = 21                # 21..28 -> las rutinas del catálogo
-ID_RUT_ALEATORIA = 29
+ID_RUT_BASE = 100               # 100..198 -> las rutinas del catálogo
+ID_RUT_ALEATORIA = 199
 ID_PERSONAJE_ESTADO = 30
-ID_PERSONAJE_BASE = 31          # 31..39 (los 9 personajes)
-ID_API = 40
-ID_POMODORO_PAUSA = 41
+ID_PERSONAJE_BASE = 200         # 200..299 -> los personajes
+ID_API = 300
+ID_POMODORO_PAUSA = 301
+ID_LOGROS = 302
+ID_SONIDO = 303
 
 
 def window_height_for(scale):
@@ -201,6 +205,13 @@ class Mascota:
         self._ultimo_pausa_ms = 0
         self._ultimo_snapshot_ms = 0
         self._ultimo_globo_ms = 0
+        # Reacciones al sistema (batería / música) y logros.
+        self._ultimo_sistema_ms = 0
+        self._aviso_bateria = False
+        self._ultima_musica = ""
+        self._ultima_bateria = None
+        self._ultima_musica_info = None
+        self._ciclos_pomodoro_vistos = 0
         # Redibujado y frecuencia adaptativa
         self._firma_previa = None     # firma visual del último frame pintado
         self._frame_cache = None      # frame elegido en este tick
@@ -445,6 +456,78 @@ class Mascota:
         self.tray.refrescar() if self.tray else None
         self._refrescar_snapshot()
 
+
+    # ------------------------------------------- logros y sistema
+
+    def on_rutina_terminada(self, nombre):
+        """El motor avisa al terminar una rutina (sin GTK aquí dentro)."""
+        try:
+            nuevos = logros.registrar_rutina(self.prefs, nombre)
+        except Exception as exc:  # noqa: BLE001
+            print(f"[logros] registrar rutina falló: {exc}")
+            return
+        if nuevos:
+            self._anunciar_logros(nuevos)
+
+    def _anunciar_logros(self, nuevos):
+        for lid in nuevos:
+            titulo = logros.LOGROS.get(lid, {}).get("titulo", lid)
+            self.globo.mostrar(f"¡Logro! {titulo}", 3500)
+            print(f"[logros] desbloqueado: {lid} ({titulo})")
+        if self.prefs.get("sonido"):
+            self._sonar_logro()
+
+    def _sonar_logro(self):
+        try:
+            tocar_nota(880, 150)
+            tocar_nota(1318, 200)
+        except Exception:  # noqa: BLE001
+            pass
+
+    def _revisar_ciclos_pomodoro(self):
+        """Si el pomodoro completó un ciclo, registra y anuncia logros."""
+        try:
+            if self.pomodoro.ciclos < self._ciclos_pomodoro_vistos:
+                # El pomodoro se reinició (ciclos vuelve a 0): resincronizar.
+                self._ciclos_pomodoro_vistos = self.pomodoro.ciclos
+                return
+            if self.pomodoro.ciclos <= self._ciclos_pomodoro_vistos:
+                return
+            self._ciclos_pomodoro_vistos = self.pomodoro.ciclos
+            nuevos = logros.registrar_pomodoro(self.prefs)
+        except Exception as exc:  # noqa: BLE001
+            print(f"[logros] registrar pomodoro falló: {exc}")
+            return
+        if nuevos:
+            self._anunciar_logros(nuevos)
+
+    def _chequear_sistema(self):
+        """Batería baja y música sonando (1 vez por minuto, con try/except)."""
+        try:
+            res = bateria()
+            self._ultima_bateria = res
+            if res is not None:
+                pct, cargando = res
+                if pct < 20 and not cargando and not self._aviso_bateria:
+                    self.globo.mostrar("batería baja ⚡", 3500)
+                    self._aviso_bateria = True
+                elif pct > 30 or cargando:
+                    self._aviso_bateria = False
+        except Exception as exc:  # noqa: BLE001
+            print(f"[sistema] batería falló: {exc}")
+        try:
+            info = musica_actual()
+            self._ultima_musica_info = info
+            if (info and self.prefs.get("musica_baile")
+                    and self.pomodoro.fase == "descanso"
+                    and not self.motor.activo):
+                titulo = info.get("titulo", "")
+                if titulo and titulo != self._ultima_musica:
+                    self._ultima_musica = titulo
+                    self.motor.iniciar("bailar")
+        except Exception as exc:  # noqa: BLE001
+            print(f"[sistema] música falló: {exc}")
+
     # ------------------------------------------------------------- callbacks
 
     def on_map(self, window):
@@ -591,6 +674,7 @@ class Mascota:
 
         # Pomodoro (y rutina que le acompaña).
         self.pomodoro.tick(dt)
+        self._revisar_ciclos_pomodoro()
         # Rutinas.
         if self.demo:
             # En modo demo la rutina del catálogo manda: el selector aleatorio
@@ -609,6 +693,10 @@ class Mascota:
         elif self.state == "jump":
             self._tick_jump()
 
+        # Sistema (batería / música): 1 vez por minuto.
+        if ahora - self._ultimo_sistema_ms >= 60000:
+            self._ultimo_sistema_ms = ahora
+            self._chequear_sistema()
         # Pausa activa (1 vez por segundo).
         if ahora - self._ultimo_pausa_ms >= INTERVALO_MENU_MS:
             self._ultimo_pausa_ms = ahora
@@ -719,6 +807,10 @@ class Mascota:
              "label": f"API local: {'desactivar' if self.api.activo else 'activar'}"},
             {"id": ID_POMODORO_PAUSA,
              "label": f"Pausa activa: {'desactivar' if self.pausa.activo else 'activar'}"},
+            {"id": ID_LOGROS,
+             "label": f"Logros: {len(logros.desbloqueados(self.prefs))}/{len(logros.LOGROS)} desbloqueados"},
+            {"id": ID_SONIDO,
+             "label": f"Sonido: {'desactivar' if self.prefs.get('sonido') else 'activar'}"},
             {"id": ID_QUIT, "label": "Salir"},
         ]
 
@@ -768,6 +860,22 @@ class Mascota:
                 print(f"[mascota] personaje -> {p.nombre} ({p.id})")
                 self.on_cambio()
                 return
+        if item_id == ID_LOGROS:
+            desbloq = logros.desbloqueados(self.prefs)
+            nombres = ", ".join(logros.LOGROS[l]["titulo"] for l in desbloq)
+            self.globo.mostrar(
+                f"Logros {len(desbloq)}/{len(logros.LOGROS)}"
+                + (f": {nombres}" if nombres else " (ninguno aún)"), 4000)
+            self.on_cambio()
+            return
+        if item_id == ID_SONIDO:
+            nuevo = not bool(self.prefs.get("sonido"))
+            self.prefs.set("sonido", nuevo)
+            self.prefs.guardar()
+            if nuevo:
+                self._sonar_logro()
+            self.on_cambio()
+            return
         if item_id == ID_API:
             activa = self.api.alternar()
             self.prefs.set("api_activa", activa)
@@ -789,6 +897,7 @@ class Mascota:
 
     def _empezar_rutina_de_fase(self):
         """Al cambiar de fase del pomodoro, la mascota acompaña."""
+        self._revisar_ciclos_pomodoro()
         if self.pomodoro.fase == FASE_TRABAJO:
             self.motor.iniciar("echar_codigo")
         elif self.pomodoro.fase == "descanso":
@@ -816,6 +925,16 @@ class Mascota:
             "pomodoro": self.pomodoro.estado(),
             "pausa_activa": self.pausa.estado_actual(),
             "api": self.api.estado(),
+            "logros": {
+                "desbloqueados": logros.desbloqueados(self.prefs),
+                "total": len(logros.LOGROS),
+                "racha_dias": int(self.prefs.get("racha_dias") or 0),
+                "pomodoros": int(self.prefs.get("pomodoros") or 0),
+            },
+            "sistema": {
+                "bateria": self._ultima_bateria,
+                "musica": self._ultima_musica_info,
+            },
         }
         return estado
 
@@ -837,6 +956,21 @@ class Mascota:
                 ],
                 "acciones": ["ir_a", "decir", "cara", "esperar", "objeto",
                              "quitar", "cuenta_atras", "saltar", "fin"],
+            }
+        if accion == "listar_logros":
+            return {
+                "logros": {
+                    "desbloqueados": logros.desbloqueados(self.prefs),
+                    "total": len(logros.LOGROS),
+                    "racha_dias": int(self.prefs.get("racha_dias") or 0),
+                    "pomodoros": int(self.prefs.get("pomodoros") or 0),
+                    "rutinas_completadas": int(
+                        self.prefs.get("rutinas_completadas") or 0),
+                },
+                "sistema": {
+                    "bateria": self._ultima_bateria,
+                    "musica": self._ultima_musica_info,
+                },
             }
         # Validación rápida (aquí no se toca GTK, solo datos).
         if accion in ("aviso", "decir") and not str(datos.get("texto", "")).strip():
@@ -920,6 +1054,7 @@ class Mascota:
             p.parar()
         else:
             print(f"[api] acción de pomodoro desconocida: {accion!r}")
+        self._revisar_ciclos_pomodoro()
 
 
 def main(argv=None):
