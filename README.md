@@ -51,8 +51,10 @@ Puedes cambiar de compañero en cualquier momento desde el submenú de la bandej
 ## ⚡ Características Principales
 
 - 🪟 **Ventana Transparente con Click-Through Real:** La ventana flota en pantalla sin marcos ni fondo. El puntero del ratón atraviesa todo el espacio vacío (`Gdk.Surface.set_input_region`), interactuando únicamente cuando haces clic sobre el sprite o sobre su globo de diálogo.
-- 🤖 **Rutinas Autónomas Dinámicas:** Motor con pesos probabilísticos que decide qué hacer cada 20–40 segundos (pasear, escribir código en su laptop, leer en una banca, dormir siestas, tomar un café, echar una hoja a la papelera, regar la plantita o respirar).
-- 🍅 **Temporizador Pomodoro:** Modos `25/5`, `45/10` y `50/10`. La mascota sincroniza sus acciones según la fase: programa o lee en tiempo de trabajo, y toma café en los descansos.
+- 🤖 **Rutinas Autónomas Dinámicas:** Motor con pesos probabilísticos que decide qué hacer cada 20–40 segundos: 14 rutinas (pasear, escribir código en su laptop, leer en una banca, dormir siestas, tomar un café, echar una hoja a la papelera, regar la plantita, respirar, bailar, merendar, jugar con la pelota, limpiar, meditar y saludar según la hora), más rutinas en JSON sin tocar Python.
+- 🍅 **Temporizador Pomodoro:** Modos `25/5`, `45/10` y `50/10`. La mascota sincroniza sus acciones según la fase: programa, lee o medita en tiempo de trabajo, y toma café, baila o juega en los descansos.
+- 🏆 **Logros y racha:** 7 logros y racha de días seguidos, guardados en `prefs.json` y anunciados en el globo.
+- 🔋 **Reacciones al sistema:** Avisa con batería baja, baila si suena música en el descanso y suena un pitido al desbloquear un logro (sonido opcional).
 - 🧘 **Pausa Activa (Salud Postural):** Tras 50 minutos de uso continuo, Maskot inicia una cuenta regresiva (3, 2, 1) y ejecuta una pose de estiramiento guiado de 6 segundos.
 - 💬 **Globo de Texto Vectorial (Cairo):** Renderizado con sombra y rabito direccional. El área del globo se suma a la región de entrada para permitir interacción con el mensaje.
 - 🛎️ **Bandeja del Sistema (StatusNotifierItem):** Menú rápido por DBus nativo con submenús para alternar colores, rutinas, temporizadores y opciones.
@@ -119,7 +121,7 @@ Maskot ejecuta secuencias de micro-acciones de forma autónoma:
 Se activa y gestiona desde la bandeja del sistema o la API HTTP.
 - **Formatos:** `25/5` (estándar), `45/10` (largo) y `50/10` (intensivo).
 - **Indicador:** Tiempo restante visible en el menú contextual y en el tooltip del icono.
-- **Sincronización:** Durante el **bloque de trabajo**, Maskot lee o programa en su laptop; durante el **descanso**, toma una taza de café caliente.
+- **Sincronización:** Durante el **bloque de trabajo**, Maskot programa, lee o medita; durante el **descanso**, toma una taza de café caliente, baila o juega con la pelota.
 
 ### 🧘 Pausa Activa
 - Monitorea el tiempo de uso continuo de la pantalla.
@@ -130,15 +132,26 @@ Se activa y gestiona desde la bandeja del sistema o la API HTTP.
 Las preferencias se almacenan automáticamente en `~/.config/mascota/prefs.json`:
 ```json
 {
-  "personaje": "naranja",
+  "personaje": "tux",
   "dias_uso": 3,
   "ultimo_dia": "2026-09-28",
   "formato_pomodoro": "25/5",
   "pausa_activa": true,
-  "api_puerto": 7777
+  "api_puerto": 7777,
+  "pomodoros": 0,
+  "rutinas_completadas": 0,
+  "matica_completadas": 0,
+  "logros": [],
+  "racha_dias": 0,
+  "ultimo_dia_racha": "",
+  "sonido": false,
+  "musica_baile": true
 }
 ```
 - `dias_uso`: Contador de días naturales en los que has utilizado la app. También marca en qué etapa está la plantita de la rutina `matica`: hasta 2 días es una semilla, a partir del tercero un brote y del día 15 en adelante florecida. Al regarla da un estirón y crece una etapa (hasta florecida).
+- `racha_dias` / `ultimo_dia_racha`: días seguidos usando la app (para los logros de racha).
+- `pomodoros`, `rutinas_completadas`, `matica_completadas`, `logros`: contadores y logros desbloqueados (ver "Logros y racha").
+- `sonido` (apagado por defecto) y `musica_baile` (activado por defecto): sonido de logros y baile con música (ver "Reacciones al sistema").
 
 ---
 
@@ -293,8 +306,8 @@ curl -s -X POST -d '{"nombre": "siesta"}' 127.0.0.1:7777/rutina
 curl -s -X POST -d '{"accion": "iniciar", "formato": "25/5"}' 127.0.0.1:7777/pomodoro
 curl -s -X POST -d '{"accion": "pausar"}' 127.0.0.1:7777/pomodoro
 
-# Cambiar de personaje (tux, koru, clawd, tuno, nilo, brio, luma, mako, orbi)
-curl -s -X POST -d '{"nombre": "tux"}' 127.0.0.1:7777/personaje
+# Cambiar de personaje (tux, koru, clawd, tuno, nilo, brio, luma, mako, orbi, pancito)
+curl -s -X POST -d '{"nombre": "pancito"}' 127.0.0.1:7777/personaje
 ```
 
 ### Tabla de Endpoints
@@ -405,7 +418,7 @@ A diferencia de X11 (`MIT-SCREEN-SAVER`), en Wayland no existe una API de inacti
 
 **Vías de resolución previstas:**
 1. Instalar bindings nativos como `python-wayland`.
-2. Integrar monitores de inactividad por DBus según el compositor (`org.gnome.Mutter.IdleMonitor`, etc.).
+2. ✅ **Hecho en v0.3.0:** monitores de inactividad por DBus según el compositor (`org.gnome.Mutter.IdleMonitor` en GNOME, vía `pausa.DBusIdle`); si no está, cae a `ext-idle-notify-v1`. KDE sigue pendiente.
 3. Modo alternativo con confirmación interactiva en pantalla ("¿Sigues ahí?").
 </details>
 
@@ -514,7 +527,7 @@ En X11 no cambia nada: sigue `MIT-SCREEN-SAVER`.
 mascota/
 ├── main.py              # Bucle principal, renderizado Cairo, coordinación y eventos
 ├── rutinas.py           # Motor de micro-acciones y catálogo de las 14 rutinas
-├── objetos.py           # Sprites pixel art de objetos (banca, libro, portátil, taza, papelera, hoja, regadera, plantita)
+├── objetos.py           # Sprites pixel art de objetos (banca, libro, portátil, taza, papelera, hoja, regadera, croissant, pelota, escoba, esterilla, plantita)
 ├── globo.py             # Globo de texto Cairo con rabito direccional y sombra
 ├── pomodoro.py          # Lógica del temporizador Pomodoro (25/5, 45/10, 50/10)
 ├── pausa.py             # Máquina de estados de pausa activa y auto-test en Wayland
@@ -531,6 +544,8 @@ mascota/
 ├── tray.py              # Icono y menú en la bandeja del sistema vía DBus puro
 ├── run.sh               # Lanzador con detección de entorno y comprobación de libs
 ├── install.sh           # Instalador interactivo y configurador multi-WM/escritorios
+├── CHANGELOG.md         # Historial de cambios por versión
+├── ROADMAP.md           # Qué sigue: GIF demo, más WMs, Flatpak/AUR
 ├── assets/
 │   ├── maskot.svg       # Icono pixel art oficial en formato vectorial
 │   └── maskot.desktop   # Lanzador estándar XDG para menús y autostart
