@@ -33,6 +33,8 @@ PALETTE_OBJETOS = {
     "v": (0.18, 0.47, 0.25),   # verde en sombra
     "F": (0.95, 0.45, 0.62),   # pétalos
     "f": (0.98, 0.82, 0.30),   # corazón de la flor
+    "E": (0.91, 0.66, 0.24),  # dorado croissant
+    "e": (0.72, 0.47, 0.15),  # dorado sombra
 }
 
 # --- banca: 16x8 -------------------------------------------------------------
@@ -169,6 +171,50 @@ PLANTA_FLOR = (
     ".TttttttT.",
 )
 
+# --- croissant: 10x6 ---------------------------------------------------------
+CROISSANT = (
+    "..EEEEEE..",
+    ".EeeeeeeE.",
+    "EEeeeeeeEE",
+    "EEeEeeEeeE",
+    ".EeeeeeeE.",
+    "..EEEEEE..",
+)
+
+# --- pelota: 8x8 -------------------------------------------------------------
+PELOTA = (
+    "..KKKK..",
+    ".KWWWWK.",
+    "KWWPPWWK",
+    "KWPWWPWK",
+    "KWWPPWWK",
+    ".KWWWWK.",
+    "..KKKK..",
+    "........",
+)
+
+# --- escoba: 8x10 ------------------------------------------------------------
+ESCOBA = (
+    "...KK...",
+    "...KK...",
+    "...MM...",
+    "...MM...",
+    "...MM...",
+    "...MM...",
+    "..MMMM..",
+    ".MMMMMM.",
+    "MMMMMMMM",
+    "MMMMMMMM",
+)
+
+# --- esterilla: 12x4 ---------------------------------------------------------
+ESTERILLA = (
+    "............",
+    "VVVVVVVVVVVV",
+    "VvvvvvvvvvvV",
+    "VVVVVVVVVVVV",
+)
+
 OBJETOS = {
     "banca": BANCA,
     "libro": LIBRO,
@@ -180,6 +226,10 @@ OBJETOS = {
     "planta_semilla": PLANTA_SEMILLA,
     "planta_brote": PLANTA_BROTE,
     "planta_flor": PLANTA_FLOR,
+    "croissant": CROISSANT,
+    "pelota": PELOTA,
+    "escoba": ESCOBA,
+    "esterilla": ESTERILLA,
 }
 
 # Tamaño en celdas de cada objeto, para poder colocarlos centrados.

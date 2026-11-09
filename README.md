@@ -6,7 +6,7 @@
 
 <br/>
 
-[![Release](https://img.shields.io/badge/Versi%C3%B3n-Beta%20Fase%202-E60012?style=for-the-badge&logo=retroarch&logoColor=white)](https://github.com/andrwvaz2/maskot-linux)
+[![Release](https://img.shields.io/badge/Versi%C3%B3n-Beta%20Fase%203-E60012?style=for-the-badge&logo=retroarch&logoColor=white)](https://github.com/andrwvaz2/maskot-linux)
 [![Platform](https://img.shields.io/badge/Plataforma-Wayland%20%7C%20X11-FFCC00?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/andrwvaz2/maskot-linux)
 [![Engine](https://img.shields.io/badge/Motor-Python%203%20%2B%20GTK4-306998?style=for-the-badge&logo=python&logoColor=white)](https://www.gtk.org/)
 [![Graphics](https://img.shields.io/badge/Gr%C3%A1ficos-Cairo%20Pixel%20Art-FF5722?style=for-the-badge)](https://cairographics.org/)
@@ -17,7 +17,7 @@
 
 ```text
 ┌────────────────────────────────────────────────────────────────────────┐
-│  ▶ MASKOT v0.2.0-beta [SYSTEM READY]                                   │
+│  ▶ MASKOT v0.3.0-beta [SYSTEM READY]                                   │
 │                                                                        │
 │  "Un compañero virtual en pixel art para tu escritorio Linux.          │
 │   Flota con transparencia total, permite clicks a través de su cuerpo, │
@@ -30,7 +30,7 @@
 ---
 
 
-### 🎭 Elenco de Personajes (9 Mascotas Disponibles)
+### 🎭 Elenco de Personajes (10 Mascotas Disponibles)
 Puedes cambiar de compañero en cualquier momento desde el submenú de la bandeja o mediante la API HTTP:
 
 | Mascota | Especie | Paleta Distintiva | Personalidad / Rol |
@@ -44,6 +44,7 @@ Puedes cambiar de compañero en cualquier momento desde el submenú de la bandej
 | 🦉 **Luma** | Búho | Morado `#9B6AE3` y plumas azul cielo | La analista observadora de detalles |
 | 🦎 **Mako** | Gecko | Turquesa `#44D0CF` y verde lima | El ágil y adaptable; aprende rápido |
 | 🐙 **Orbi** | Pulpo | Coral `#F56B8A` y tentáculos lavanda | El integrador multitarea que conecta todo |
+| 🥐 **Pancito** | Croissant | Dorado `#E8A93D` y crema `#FFF2DD` | El croissant dorado, compañero de la tablet |
 
 ---
 
@@ -76,6 +77,12 @@ Maskot ejecuta secuencias de micro-acciones de forma autónoma:
   ║  • HOJA A PAPELERA: Recoge una hoja del suelo y la tira a una papelera.     ║
   ║  • PLANTITA     : Riega su maceta; crece según los días de uso que llevas.  ║
   ║  • RESPIRAR     : Cuenta atrás 3-2-1 y dos rondas de inhalar/exhalar.       ║
+  ║  • BAILAR       : Salta al ritmo con "♪ ♫"; también suena con música.       ║
+  ║  • MERIENDA     : Se come un croissant ("ñam ñam…").                        ║
+  ║  • JUGAR PELOTA : Persigue una pelota y la empuja con un salto.             ║
+  ║  • LIMPIAR      : Barre la barra con su escoba de un lado a otro.           ║
+  ║  • MEDITAR      : Cuenta atrás 3-2-1 e inhala/exhala con ojos cerrados.     ║
+  ║  • SALUDO HORA  : "Buenos días" / "buenas tardes" / "buenas noches".        ║
   ║  • SALTO REACTIVO: ¡Hazle clic en cualquier momento para saludar!           ║
   ╚═════════════════════════════════════════════════════════════════════════════╝
 ```
@@ -94,8 +101,8 @@ Maskot ejecuta secuencias de micro-acciones de forma autónoma:
 | `ir_a(x, al_llegar=…)` | Desplaza el sprite a la posición horizontal `x` (`None` para destino aleatorio). Con `al_llegar=True` la rutina continúa en cuanto llega. |
 | `decir(texto, ms)` | Muestra un texto en el globo de diálogo durante `ms` milisegundos. |
 | `cara(nombre, ms)` | Cambia la expresión del rostro: `feliz`, `cansado`, `pensar`. |
-| `esperar(ms, pose=…, texto=…)` | Pausa en el lugar con una pose (`siesta`, `leer`, `codigo`, `regar`, `respirar`) y, si se le pasa `texto`, lo muestra mientras espera. |
-| `objeto(nombre, x=…, y=…)` | Coloca o mueve un elemento del escenario (`banca`, `libro`, `taza`, `portatil`, `papelera`, `hoja`, `regadera`, `planta_*`). |
+| `esperar(ms, pose=…, texto=…)` | Pausa en el lugar con una pose (`siesta`, `leer`, `codigo`, `regar`, `respirar`, `meditar`) y, si se le pasa `texto`, lo muestra mientras espera. |
+| `objeto(nombre, x=…, y=…)` | Coloca o mueve un elemento del escenario (`banca`, `libro`, `taza`, `portatil`, `papelera`, `hoja`, `regadera`, `croissant`, `pelota`, `escoba`, `esterilla`, `planta_*`). |
 | `quitar(nombre)` | Retira un solo objeto y deja los demás donde estaban. |
 | `cuenta_atras(n, ms, texto)` | Cuenta `3…2…1` en el globo. Es la misma cuenta que usa la pausa activa (`pausa.CuentaAtras`). |
 | `saltar()` | Efectúa un salto elástico con animación. |
@@ -296,6 +303,7 @@ curl -s -X POST -d '{"nombre": "tux"}' 127.0.0.1:7777/personaje
 |:---:|---|---|---|
 | `GET` | `/estado` | — | Snapshot del estado: sprite, rutina, globo, pomodoro, pausa, personaje y días de uso |
 | `GET` | `/rutinas` | — | Catálogo de rutinas y micro-acciones |
+| `GET` | `/logros` | — | Logros desbloqueados, racha, pomodoros y estado del sistema |
 | `POST` | `/aviso` | `{"texto": "..."}` | Globo rápido de advertencia (1.8 s) |
 | `POST` | `/decir` | `{"texto": "...", "ms": 3000}` | Mensaje con duración específica en ms |
 | `POST` | `/rutina` | `{"nombre": "siesta"}` | Interrumpe y ejecuta la rutina indicada |
@@ -333,12 +341,12 @@ Leyenda de la columna *Estado*:
 | **Wayland + layer-shell** *(Recomendado)* | 🟢 Verificado | Capa `mascota` en `OVERLAY`, teclado `NONE`, superficie a todo el ancho del monitor (por defecto el primer monitor de GDK; configurable con `--monitor`/`MASKOT_MONITOR`). Click-through fluido con `wl_region`. |
 | **Wayland sin layer-shell** *(Fallback)* | 🟡 Funcional | Modo ventana flotante; avisa en consola y mantiene `set_input_region`. |
 | **X11 / XWayland** | 🟢 Verificado | Shape recortado al sprite y globo. Inyección de clic XTest verificada. |
-| **Rutinas y Objetos** | 🟢 Verificado | Las 8 rutinas completan su ciclo (banca, libro, laptop, taza, siesta, papelera, plantita, respiración). Secuencias comprobadas sin ventana; las 3 nuevas a falta de revisión visual en pantalla. |
+| **Rutinas y Objetos** | 🟢 Verificado | Las 14 rutinas completan su ciclo sin ventana (las 8 originales + bailar, merienda, jugar con la pelota, limpiar, meditar y saludo según la hora). Falta revisión visual en pantalla. |
 | **Globo de Diálogo** | 🟢 Verificado | Renderizado Cairo nítido con sombra y rabito direccional. |
 | **Temporizador Pomodoro** | 🟡 Parcial | Estados, cambios de fase y avisos probados; falta prueba continua de 50 min. |
 | **Bandeja de Estado (DBus)** | 🟡 Parcial | Árbol de submenús `GetLayout` y eventos validados vía DBus. |
 | **Pausa Activa (Lógica)** | 🟢 Verificado | Máquina de estados validada con detector simulado (50 min → 3,2,1 → estirar). |
-| **Pausa Activa (Sensor Real)** | 🔴 Pendiente | Detalles técnicos explicados en las notas de desarrollo. |
+| **Pausa Activa (Sensor Real)** | 🟡 Parcial | En Wayland se prueba primero DBus `org.gnome.Mutter.IdleMonitor` (GNOME); si no está, cae a ext-idle-notify-v1. KDE sigue pendiente (ver notas de desarrollo). |
 | **Consumo a 5 FPS (Siesta)** | 🟢 Verificado | 0–1% CPU medido en reposo con reprogramación dinámica de FPS. |
 
 ---
@@ -435,12 +443,77 @@ window-rule {
 
 ---
 
+
+## 🧩 Rutinas y personajes personalizados (JSON)
+
+Sin tocar Python: pon un `*.json` en `rutinas_custom/` o en
+`~/.config/mascota/rutinas/` para una rutina, y en `personajes_custom/` o en
+`~/.config/mascota/personajes/` para un personaje. Al arrancar, Maskot los
+carga; un archivo inválido solo avisa por consola y se ignora.
+
+- Rutinas: `nombre`, `titulo`, `peso`, `solo_fases` (`null` / `"trabajo"` /
+  `"descanso"`) y `pasos` con las primitivas del motor (`decir`, `cara`,
+  `esperar`, `objeto`, `ir_a`, `saltar`, `cuenta_atras`…). Ejemplo válido:
+  `rutinas_custom/ejemplo-saludo.json`. Formato completo en
+  `rutinas_custom/README.md`.
+- Personajes: `id`, `nombre`, `desc`, `paleta` (letra -> `#RRGGBB`),
+  `cuerpo` (16 filas de 16 caracteres), `cara_neutro`, `caras`,
+  `patas_fila`, `paso1` / `paso2`. Ejemplo válido:
+  `personajes_custom/ejemplo-gato.json` (Mishi, un gato naranja). Formato
+  completo en `personajes_custom/README.md`.
+
+Las rutinas y personajes integrados siempre ganan: un JSON no puede pisar
+`pasear`, `tux` o `pancito`.
+
+## 🏆 Logros y racha
+
+Maskot guarda en `~/.config/mascota/prefs.json` la racha de días seguidos
+(`racha_dias`), los pomodoros completados, las rutinas terminadas y las
+veces que regaste la plantita. Al desbloquear un logro, lo anuncia en el
+globo ("¡Logro! …") y, si el sonido está activado, suena un pitido.
+
+| Logro | Cómo se consigue |
+|---|---|
+| Primera semana | Usar Maskot 7 días |
+| Racha de 3 / 7 días | Usarlo 3 / 7 días seguidos |
+| 10 / 50 pomodoros | Completar 10 / 50 ciclos |
+| 50 rutinas | Completar 50 rutinas |
+| Jardinero | Regar la plantita 5 veces |
+
+En el menú de la bandeja hay un item "Logros: X/Y desbloqueados" y en la
+API, `GET /logros`.
+
+## 🔋 Reacciones al sistema (batería, música, sonido)
+
+Una vez por minuto, sin bloquear la animación y sin crashear si algo falta:
+
+- **Batería baja:** si queda menos del 20% y no está cargando, avisa en el
+  globo ("batería baja ⚡"). No vuelve a avisar hasta que suba del 30% o se
+  enchufe. Lee `/sys/class/power_supply/BAT*/capacity`.
+- **Música:** si suena algo (vía `playerctl`, MPRIS) durante un descanso
+  del Pomodoro y `musica_baile` está activado, la mascota baila una vez por
+  canción. Sin `playerctl` o sin música, no hace nada.
+- **Sonido:** apagado por defecto. En el menú, "Sonido: activar/desactivar".
+  Al desbloquear un logro suenan dos notas (880 Hz y 1318 Hz) generadas
+  como WAV con la stdlib y reproducidas con `paplay` / `aplay` / `ffplay`,
+  el primero que exista. Sin reproductor, es silencioso.
+
+## 🧘 Pausa activa en Wayland (DBus)
+
+En sesión Wayland, la pausa activa prueba primero DBus
+`org.gnome.Mutter.IdleMonitor` (`GetIdletime()`), sin ctypes y sin
+auto-test en subproceso: es la vía preferida en GNOME. Si no está
+disponible (otro compositor, o sin sesión DBus), cae a
+`ext-idle-notify-v1` como antes, con su auto-test. KDE sigue pendiente:
+no hay una ruta DBus verificada para KWin en este repo (ver ROADMAP.md).
+En X11 no cambia nada: sigue `MIT-SCREEN-SAVER`.
+
 ## 📁 Estructura del Proyecto
 
 ```text
 mascota/
 ├── main.py              # Bucle principal, renderizado Cairo, coordinación y eventos
-├── rutinas.py           # Motor de micro-acciones y catálogo de las 8 rutinas
+├── rutinas.py           # Motor de micro-acciones y catálogo de las 14 rutinas
 ├── objetos.py           # Sprites pixel art de objetos (banca, libro, portátil, taza, papelera, hoja, regadera, plantita)
 ├── globo.py             # Globo de texto Cairo con rabito direccional y sombra
 ├── pomodoro.py          # Lógica del temporizador Pomodoro (25/5, 45/10, 50/10)
@@ -448,7 +521,13 @@ mascota/
 ├── api.py               # Servidor HTTP local REST (127.0.0.1:7777) sin dependencias
 ├── preferencias.py      # Persistencia en disco (~/.config/mascota/prefs.json)
 ├── sprite.py            # Motor de renderizado Cairo, poses y animación
-├── personajes.py        # Catálogo de 9 personajes (Tux + Familia Koru)
+├── personajes.py        # Catálogo de 10 personajes (Tux + Familia Koru + Pancito)
+├── rutinas_custom.py    # Rutinas en JSON (./rutinas_custom/ y ~/.config/mascota/rutinas/)
+├── personajes_custom.py # Personajes en JSON (./personajes_custom/ y ~/.config/mascota/personajes/)
+├── logros.py            # Logros y racha (sin GTK)
+├── sistema.py           # Batería, música (playerctl) y sonido (WAV sine)
+├── rutinas_custom/      # Ejemplo: ejemplo-saludo.json
+├── personajes_custom/   # Ejemplo: ejemplo-gato.json
 ├── tray.py              # Icono y menú en la bandeja del sistema vía DBus puro
 ├── run.sh               # Lanzador con detección de entorno y comprobación de libs
 ├── install.sh           # Instalador interactivo y configurador multi-WM/escritorios

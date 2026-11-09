@@ -30,6 +30,14 @@ DEFAULTS = {
     "formato_pomodoro": "25/5",
     "pausa_activa": True,
     "api_puerto": 7777,
+    "pomodoros": 0,
+    "rutinas_completadas": 0,
+    "matica_completadas": 0,
+    "logros": [],
+    "racha_dias": 0,
+    "ultimo_dia_racha": "",
+    "sonido": False,
+    "musica_baile": True,
 }
 
 
@@ -95,11 +103,26 @@ class Preferencias:
         return int(self.get("dias_uso") or 0)
 
     def marcar_dia_de_uso(self):
-        """Suma 1 al contador si hoy no se había contado ya."""
-        hoy = datetime.date.today().isoformat()
-        if self.get("ultimo_dia") == hoy:
+        """Suma 1 al contador si hoy no se había contado ya.
+
+        También actualiza la racha: si ayer se usó, la racha sube en 1; si
+        hoy ya estaba contada, no cambia; si no, la racha empieza en 1.
+        """
+        hoy = datetime.date.today()
+        hoy_iso = hoy.isoformat()
+        if self.get("ultimo_dia") == hoy_iso:
             return False
+        ayer_iso = (hoy - datetime.timedelta(days=1)).isoformat()
+        ultima_racha = self.get("ultimo_dia_racha") or ""
+        if ultima_racha == ayer_iso:
+            racha = int(self.get("racha_dias") or 0) + 1
+        elif ultima_racha == hoy_iso:
+            racha = int(self.get("racha_dias") or 0)
+        else:
+            racha = 1
         self.datos["dias_uso"] = self.dias_uso + 1
-        self.datos["ultimo_dia"] = hoy
+        self.datos["ultimo_dia"] = hoy_iso
+        self.datos["racha_dias"] = racha
+        self.datos["ultimo_dia_racha"] = hoy_iso
         self.guardar()
         return True

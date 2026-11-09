@@ -612,6 +612,62 @@ ORBI = Personaje(
     cara_codigo={6: "...Oc5o..5occcO.", 7: "...Ocoo..oocccO."},
 )
 
+
+# ---------------------------------------------------------------------------
+# 10. PANCITO — El croissant dorado
+# ---------------------------------------------------------------------------
+CUERPO_PANCITO = (
+    "................",
+    ".....OOOOOO.....",
+    "...OOccccccOO...",
+    "..OccCCCCCCccO..",
+    ".OccCCCCCCCCccO.",
+    ".OccCCCCCCCCccO.",
+    "OccCCCCCCCCCCCCO",
+    "OccCCCCCCCCCCCCO",
+    "OccCCCCCCCCCCCCO",
+    ".OccCCCCCCCCccO.",
+    ".OccCCCCCCCCccO.",
+    "..OccCCCCCCccO..",
+    "...OOccccccOO...",
+    "....OOOOOOOO....",
+    "...O11O..O11O...",
+    "...O22O..O22O...",
+)
+
+PALETA_PANCITO = {
+    "c": hex_to_rgb(0xE8A93D),  # dorado croissant
+    "C": hex_to_rgb(0xFFF2DD),  # crema
+    "1": hex_to_rgb(0xD97706),  # detalle dorado oscuro
+    "2": hex_to_rgb(0xB45309),  # sombra
+    "O": hex_to_rgb(0x111827),  # contorno oscuro
+    "o": hex_to_rgb(0x111827),  # ojos
+    "5": (1.0, 1.0, 1.0),       # brillo
+    "r": hex_to_rgb(0xF58594),  # rubor
+}
+
+PANCITO = Personaje(
+    id="pancito",
+    nombre="Pancito",
+    desc="El croissant dorado, compañero de la tablet",
+    paleta_override=PALETA_PANCITO,
+    cuerpo=CUERPO_PANCITO,
+    cara_neutro={5: ".OccC5oCCCCo5CcO.", 6: ".OccCooCCCCooCcO."},
+    caras={
+        "feliz": {5: ".OccCooCCCCooCcO.", 6: ".OccCo.oCCo.oCcO.", 7: "OccCCCrrCCCCCCCO"},
+        "cansado": {5: ".OccCooCCCCooCcO.", 6: ".OccCCCCCCCCccO."},
+        "pensar": {5: ".OccC5oCCCCCCcO.", 6: ".OccCooCCCCCCcO."},
+    },
+    patas_fila=15,
+    paso1=[3, 4, 5, 6],
+    paso2=[10, 11, 12, 13],
+    brazos_arriba={2: "...OOc......cOO..", 3: "..Occ........ccO."},
+    brazos_tecleo={6: "Occ11CCCCCCCC11CO", 7: "Occ11CCCCCCCC11CO"},
+    cara_dormido={5: ".OccCooCCCCooCcO.", 6: ".OccCCCCCCCCccO."},
+    cara_leer={5: ".OccC5oCCCCo5CcO.", 6: ".OccCooCCCCooCcO."},
+    cara_codigo={5: ".OccC5oCCCCo5CcO.", 6: ".OccCooCCCCooCcO."},
+)
+
 # ---------------------------------------------------------------------------
 # Catálogo y resolución
 # ---------------------------------------------------------------------------
@@ -625,9 +681,10 @@ CATALOGO: dict[str, Personaje] = {
     "luma": LUMA,
     "mako": MAKO,
     "orbi": ORBI,
+    "pancito": PANCITO,
 }
 
-LISTA_PERSONAJES = ("tux", "koru", "clawd", "tuno", "nilo", "brio", "luma", "mako", "orbi")
+LISTA_PERSONAJES = ("tux", "koru", "clawd", "tuno", "nilo", "brio", "luma", "mako", "orbi", "pancito")
 
 # Compatibilidad con las preferencias anteriores
 ALIAS_LEGACY = {
@@ -646,3 +703,14 @@ def get_personaje(nombre: str) -> Personaje:
 
 obtener_personaje = get_personaje
 
+
+# --- Personajes personalizados (JSON) ---------------------------------------
+# Se cargan al final, sin pisar los built-in; un JSON inválido solo avisa.
+try:
+    from personajes_custom import cargar_personajes_custom
+    for _pid, _pj in cargar_personajes_custom().items():
+        if _pid not in CATALOGO:
+            CATALOGO[_pid] = _pj
+            LISTA_PERSONAJES = LISTA_PERSONAJES + (_pid,)
+except Exception as _exc:  # noqa: BLE001
+    print(f"[personajes] no se cargaron personajes custom: {_exc}")

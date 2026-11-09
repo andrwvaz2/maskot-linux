@@ -24,6 +24,7 @@ Rutinas incluidas: `pasear`, `siesta`, `leer_banca`, `echar_codigo`,
 
 from __future__ import annotations
 
+import datetime
 import inspect
 import random
 
@@ -198,6 +199,44 @@ def _pasos_matica(rng, pet):
     return pasos
 
 
+
+def _pasos_jugar_pelota(rng, pet):
+    """Persigue una pelota cercana y la empuja con un salto."""
+    pelota_x = _a_la_derecha(rng, pet, 150, 260)
+    parar_x = max(0.0, pelota_x - 80)
+    return [
+        objeto("pelota", x=pelota_x),
+        ir_a(parar_x, al_llegar=True),
+        esperar(400),
+        decir(rng.choice(["¡a jugar!", "esa pelota es mía",
+                          "vamos a jugar"]), 2200),
+        esperar(300),
+        saltar(),
+        esperar(600),
+        objeto("pelota", x=min(_ancho_recorrido(pet),
+                               pelota_x + rng.randrange(40, 120))),
+        decir(rng.choice(["¡gol!", "otra vez", "qué divertido"]), 2000),
+        cara("feliz", 1600),
+        quitar("pelota"),
+    ]
+
+
+def _pasos_saludo_hora(rng, pet):
+    """Saluda según la hora del día."""
+    hora = datetime.datetime.now().hour
+    if hora < 12:
+        texto = "buenos días ☀️"
+    elif hora < 20:
+        texto = "buenas tardes"
+    else:
+        texto = "buenas noches, a dormir pronto"
+    return [
+        decir(texto, 3000),
+        cara("feliz", 2000),
+        saltar(),
+    ]
+
+
 RUTINAS = {
     "pasear": {
         "peso": 2,
@@ -288,16 +327,83 @@ RUTINAS = {
             decir("qué bien", 2000),
         ],
     },
+    "bailar": {
+        "peso": 2,
+        "titulo": "Bailar",
+        "pasos": lambda rng: [
+            decir("♪ ♫ a bailar", 2400),
+            saltar(),
+            esperar(800),
+            saltar(),
+            cara("feliz", 1800),
+            saltar(),
+            decir(rng.choice(["¡qué ritmo!", "♪ ♫", "a bailar"]), 2000),
+        ],
+    },
+    "merienda": {
+        "peso": 1,
+        "titulo": "Merienda (comer croissant)",
+        "pasos": lambda rng: [
+            objeto("croissant"),
+            esperar(500),
+            decir("ñam ñam…", 2600),
+            esperar(2600),
+            cara("feliz", 1800),
+            decir(rng.choice(["qué rico", "un croissant más",
+                              "merienda lista"]), 2000),
+            quitar("croissant"),
+        ],
+    },
+    "jugar_pelota": {
+        "peso": 1,
+        "titulo": "Jugar con la pelota",
+        "pasos": _pasos_jugar_pelota,
+    },
+    "limpiar": {
+        "peso": 1,
+        "titulo": "Limpiar",
+        "pasos": lambda rng: [
+            objeto("escoba"),
+            ir_a(rng.randrange(40, 700), al_llegar=True),
+            decir("limpiando…", 2400),
+            esperar(2000),
+            ir_a(rng.randrange(40, 700), al_llegar=True),
+            esperar(1500),
+            cara("feliz", 1600),
+            decir("todo limpio", 2000),
+            quitar("escoba"),
+        ],
+    },
+    "meditar": {
+        "peso": 2,
+        "titulo": "Meditar",
+        "pasos": lambda rng: [
+            decir("un momento de calma", 2400),
+            esperar(400),
+            cuenta_atras(3, 1000, "Medita en {n}…"),
+            esperar(4000, pose="meditar", texto="Inhala…"),
+            esperar(4000, texto="Exhala…"),
+            esperar(4000, pose="meditar", texto="Inhala…"),
+            esperar(4000, texto="Exhala…"),
+            cara("feliz", 1800),
+            decir("qué paz", 2000),
+        ],
+    },
+    "saludo_hora": {
+        "peso": 1,
+        "titulo": "Saludo según la hora",
+        "pasos": _pasos_saludo_hora,
+    },
 }
 
 # Objetos que la mascota "lleva" en la mano: se colocan a su lado para que se
 # vean (el sprite se dibuja después y los taparía).
-OBJETOS_EN_MANO = ("libro", "taza", "regadera", "hoja")
+OBJETOS_EN_MANO = ("libro", "taza", "regadera", "hoja", "croissant", "pelota", "escoba")
 
 # Poses que puede mantener una acción `esperar`. `regar` y `respirar` no tienen
 # cuadro propio todavía y reutilizan los que ya hay: mirar hacia abajo (el de
 # la laptop) y brazos en alto (el del estiramiento).
-POSES = ("siesta", "leer", "codigo", "regar", "respirar")
+POSES = ("siesta", "leer", "codigo", "regar", "respirar", "meditar")
 
 # Frames de apoyo
 FRAME_SIESTA = sp.FRAME_SIESTA
@@ -424,13 +530,18 @@ class MotorRutinas:
             peso = info.get("peso", 0)
             if peso <= 0:
                 continue
+            solo = info.get("solo_fases")
+            if fase is not None and solo is not None and solo != fase:
+                continue
             candidatas.append((nombre, peso))
         if fase == "trabajo":
             candidatas = [(n, p) for n, p in candidatas
-                          if n in ("echar_codigo", "leer_banca")]
+                          if n in ("echar_codigo", "leer_banca", "meditar")]
         elif fase == "descanso":
             candidatas = [("descanso_cafe", 1)] + [
-                (n, p) for n, p in candidatas if n in ("pasear", "siesta")
+                (n, p) for n, p in candidatas
+                if n in ("pasear", "siesta", "bailar", "jugar_pelota",
+                         "merienda")
             ]
         if not candidatas:
             return "pasear"
@@ -561,6 +672,12 @@ class MotorRutinas:
         self._limpiar()
         print(f"[rutinas] termina '{nombre}'")
         self._avisar()
+        avisar_fin = getattr(self.pet, "on_rutina_terminada", None)
+        if avisar_fin:
+            try:
+                avisar_fin(nombre)
+            except Exception as exc:  # noqa: BLE001
+                print(f"[rutinas] on_rutina_terminada falló: {exc}")
 
     def _limpiar(self):
         self.nombre = None
@@ -634,6 +751,8 @@ class MotorRutinas:
             return sp.frame_codigo       # mirando hacia abajo
         if self.pose == "respirar":
             return sp.frame_estirar      # brazos en alto
+        if self.pose == "meditar":
+            return sp.frame_siesta       # ojos cerrados
         if self.en_salto:
             return sp.frame_jump
         return walk_frame
@@ -642,3 +761,13 @@ class MotorRutinas:
         """Alterna True/False para las 'Zzz' sin depender del reloj."""
         self._z = not getattr(self, "_z", False)
         return self._z
+
+# --- Rutinas personalizadas (JSON) ------------------------------------------
+# Se fusionan al final, sin pisar las built-in; un JSON inválido solo avisa.
+try:
+    from rutinas_custom import cargar_rutinas_custom
+    for _nombre, _info in cargar_rutinas_custom().items():
+        if _nombre not in RUTINAS:
+            RUTINAS[_nombre] = _info
+except Exception as _exc:  # noqa: BLE001
+    print(f"[rutinas] no se cargaron rutinas custom: {_exc}")
