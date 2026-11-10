@@ -36,6 +36,8 @@ import time
 
 import gi
 
+import cairo  # noqa: E402  (limpiar el fondo con OPERATOR_SOURCE, ver _draw_scene)
+
 gi.require_version("Gtk", "4.0")
 gi.require_version("Gdk", "4.0")
 from gi.repository import Gdk, GLib, Gtk  # noqa: E402
@@ -214,6 +216,9 @@ class Mascota:
         self._ciclos_pomodoro_vistos = 0
         # Redibujado y frecuencia adaptativa
         self._firma_previa = None     # firma visual del último frame pintado
+        self._firma_mascara_previa = None  # firma de la última máscara XShape
+        self._mascara_tamano = None   # (ancho, alto) de la última máscara
+        self._css_provider = None    # proveedor CSS (¡guardar la referencia!)
         self._frame_cache = None      # frame elegido en este tick
         self._x_previo = None         # x del tick anterior (¿se mueve?)
         self._fps_candidato = None
@@ -404,12 +409,23 @@ class Mascota:
         self.backend.pending_move = (x, y, geo.width, height)
 
     def _apply_transparent_css(self):
-        css = b"window { background-color: transparent; }"
-        provider = Gtk.CssProvider()
-        provider.load_from_data(css)
+        # El fondo transparente no puede depender solo de la ventana: en
+        # XWayland (GNOME + --x11) el área de dibujo puede quedarse con el
+        # fondo opaco del tema y verse como una franja blanca a todo lo ancho.
+        # Se cubre también el DrawingArea hijo.
+        #
+        # OJO: el proveedor DEBE guardarse como atributo de la instancia.
+        # Como variable local, Python lo libera al salir de este método y
+        # los estilos dejan de aplicarse: con el proveedor perdido, en X11
+        # se veía la franja blanca y en Wayland nativo una caja negra, o sea
+        # que el fondo transparente no estaba pegando en ningún backend.
+        css = (b"window, window.background { background-color: transparent; }\n"
+               b"window drawingarea { background-color: transparent; }")
+        self._css_provider = Gtk.CssProvider()
+        self._css_provider.load_from_data(css)
         display = Gdk.Display.get_default()
         Gtk.StyleContext.add_provider_for_display(
-            display, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
+            display, self._css_provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
         )
 
     def _reset_sprite(self):
@@ -552,6 +568,15 @@ class Mascota:
         self._draw_scene(cr, width)
 
     def _draw_scene(self, cr, width):
+        # 0) Limpiar toda la superficie a transparente antes de dibujar.
+        # Sin esto, en XWayland el fondo puede quedarse con el color opaco
+        # del tema (franja blanca a todo lo ancho) aunque el CSS diga
+        # `transparent`: el área solo dibujaba el sprite y los objetos.
+        cr.set_source_rgba(0, 0, 0, 0)
+        cr.set_operator(cairo.OPERATOR_SOURCE)
+        cr.paint()
+        cr.set_operator(cairo.OPERATOR_OVER)
+
         # 1) Objetos colocados por la rutina (banca, libro, taza, portátil).
         for nombre, (ox, oy) in self.motor.objetos.items():
             objetos.dibujar(cr, nombre, ox, oy, self.scale)
@@ -630,6 +655,117 @@ class Mascota:
             globo.ms_restantes if globo.desvanecido else 0,
             tuple(sorted(self.motor.objetos.items())),
         )
+
+    def _firma_mascara(self):
+        """Huella de todo lo que afecta a la máscara XShape de la ventana.
+
+        Igual que `_firma_visual`, pero sin el desvanecido del globo (su
+        opacidad cambia cada tick y no mueve ningún píxel de la máscara).
+        """
+        globo = self.globo
+        return (
+            round(self.sprite.x, 2),
+            round(self.sprite.y, 2),
+            self.sprite.direction,
+            self.sprite.body_index,
+            id(self._frame_a_dibujar()),
+            self.pose_extra,
+            globo.visible,
+            globo.texto,
+            globo.rect() if globo.visible else None,
+            tuple(sorted(self.motor.objetos.items())),
+        )
+
+    def _mascara_bitmap(self):
+        """Bitmap 1-bit (LSB primero, filas a múltiplo de byte) con los
+        píxeles opacos de la escena, para XShape (ShapeBounding) en X11.
+
+        Cubre el sprite (grilla del frame, con espejo si mira a la izquierda),
+        los objetos de la rutina (grillas de objetos.py) y el globo (cuerpo
+        redondeado + rabito, sin la sombra). Es el sustituto de la
+        transparencia por CSS, que en GNOME/XWayland no funciona ni en una
+        ventana mínima: sin máscara, la ventana se ve como una franja blanca
+        opaca a todo lo ancho. Devuelve None si aún no se conoce el ancho.
+        """
+        width = self.window_width
+        height = self.window_height
+        if width <= 0 or height <= 0:
+            return None
+        stride = (width + 7) // 8
+        data = bytearray(stride * height)
+        scale = self.scale
+
+        def pintar_rect(x0, y0, x1, y1):
+            """Marca el rect [x0,x1) x [y0,y1) en el bitmap (recortado)."""
+            x0 = max(0, int(x0))
+            y0 = max(0, int(y0))
+            x1 = min(width, int(x1))
+            y1 = min(height, int(y1))
+            if x0 >= x1 or y0 >= y1:
+                return
+            b0 = x0 // 8
+            b1 = (x1 - 1) // 8
+            for y in range(y0, y1):
+                base = y * stride
+                if b0 == b1:
+                    data[base + b0] |= ((1 << (x1 - x0)) - 1) << (x0 % 8)
+                else:
+                    data[base + b0] |= (0xFF << (x0 % 8)) & 0xFF
+                    for b in range(b0 + 1, b1):
+                        data[base + b] = 0xFF
+                    data[base + b1] |= (1 << ((x1 - 1) % 8 + 1)) - 1
+
+        def pintar_grilla(filas, paleta, ox, oy):
+            """Marca las celdas no transparentes de una grilla de caracteres."""
+            for r, fila in enumerate(filas):
+                for c, ch in enumerate(fila):
+                    if paleta.get(ch) is None:
+                        continue
+                    pintar_rect(ox + c * scale, oy + r * scale,
+                                ox + (c + 1) * scale, oy + (r + 1) * scale)
+
+        # 1) Objetos colocados por la rutina (banca, libro, taza, ...).
+        for nombre, (ox, oy) in self.motor.objetos.items():
+            filas = objetos.OBJETOS.get(nombre)
+            if filas is not None:
+                pintar_grilla(filas, objetos.PALETTE_OBJETOS, ox, oy)
+
+        # 2) El sprite, con espejo si mira a la izquierda (como draw_frame).
+        frame = self._frame_a_dibujar()
+        sx, sy = self.sprite.x, self.sprite.y
+        for r, fila in enumerate(frame):
+            for c, ch in enumerate(fila):
+                if self.sprite.palette.get(ch) is None:
+                    continue
+                col = (len(fila) - 1 - c) if self.sprite.direction < 0 else c
+                pintar_rect(sx + col * scale, sy + r * scale,
+                            sx + (col + 1) * scale, sy + (r + 1) * scale)
+
+        # 3) El globo: cuerpo redondeado + rabito, sin la sombra.
+        grect = self.globo.rect()
+        if grect is not None:
+            gx, gy, gw, gh = grect
+            alto_cuerpo = gh - 5
+            radio = max(3, min(8, alto_cuerpo // 2))
+            for y in range(gy, gy + alto_cuerpo):
+                yc = y + 0.5
+                if yc < gy + radio:
+                    dy = (gy + radio) - yc
+                    inset = radio - math.sqrt(max(0.0, radio * radio - dy * dy))
+                elif yc > gy + alto_cuerpo - radio:
+                    dy = yc - (gy + alto_cuerpo - radio)
+                    inset = radio - math.sqrt(max(0.0, radio * radio - dy * dy))
+                else:
+                    inset = 0.0
+                pintar_rect(gx + inset, y, gx + gw - inset, y + 1)
+            # Rabito: triángulo que se estrecha hacia abajo (4 px -> 0).
+            cx = gx + gw / 2
+            for y in range(gy + alto_cuerpo, gy + gh):
+                t = (y - (gy + alto_cuerpo)) / 5.0
+                mitad = 4.0 * (1.0 - t)
+                pintar_rect(cx - mitad, y, cx + mitad, y + 1)
+
+        return bytes(data)
 
     def _hay_animacion(self):
         """¿Hay algo cambiando píxeles de forma continua ahora mismo?"""
@@ -716,6 +852,19 @@ class Mascota:
         if firma != self._firma_previa:
             self._firma_previa = firma
             self.drawing_area.queue_draw()
+
+        # Máscara XShape (solo X11): recorta la ventana visible a los píxeles
+        # dibujados, porque la transparencia por CSS no funciona en
+        # GNOME/XWayland. Se actualiza cuando cambia lo que se ve o el tamaño.
+        if self.backend is not None and self.backend.name == "x11":
+            firma_m = self._firma_mascara()
+            tam = (self.window_width, self.window_height)
+            if firma_m != self._firma_mascara_previa or tam != self._mascara_tamano:
+                self._firma_mascara_previa = firma_m
+                self._mascara_tamano = tam
+                bitmap = self._mascara_bitmap()
+                if bitmap is not None:
+                    self.backend.set_shape_mask(tam[0], tam[1], bitmap)
         return True
 
     def _rectangulos_entrada(self):

@@ -29,6 +29,10 @@ from backends.base import Backend
 # PropModeReplace (0) de Xlib: reemplaza la propiedad.
 _PROP_MODE_REPLACE = 0
 
+# XShape: ShapeBounding (0) recorta la forma visible; ShapeSet (0) la reemplaza.
+_SHAPE_BOUNDING = 0
+_SHAPE_SET = 0
+
 
 def _load_xlib():
     """Carga libX11 con ctypes o devuelve None si no está disponible."""
@@ -68,9 +72,41 @@ def _load_xlib():
     ]
     xlib.XResizeWindow.restype = ctypes.c_int
 
+    xlib.XCreateBitmapFromData.argtypes = [
+        ctypes.c_void_p,          # Display*
+        ctypes.c_ulong,           # Drawable
+        ctypes.c_char_p,          # data (bitmap 1-bit, LSB primero)
+        ctypes.c_uint,            # width
+        ctypes.c_uint,            # height
+    ]
+    xlib.XCreateBitmapFromData.restype = ctypes.c_ulong
+
+    xlib.XFreePixmap.argtypes = [ctypes.c_void_p, ctypes.c_ulong]
+    xlib.XFreePixmap.restype = ctypes.c_int
+
     xlib.XFlush.argtypes = [ctypes.c_void_p]
     xlib.XFlush.restype = ctypes.c_int
     return xlib
+
+
+def _load_xext():
+    """Carga libXext (XShape) con ctypes o devuelve None si no está."""
+    try:
+        xext = ctypes.CDLL("libXext.so.6")
+    except OSError:
+        return None
+
+    xext.XShapeCombineMask.argtypes = [
+        ctypes.c_void_p,          # Display*
+        ctypes.c_ulong,           # Window destino
+        ctypes.c_int,             # dest_kind (ShapeBounding)
+        ctypes.c_int,             # x_off
+        ctypes.c_int,             # y_off
+        ctypes.c_ulong,           # Pixmap máscara (profundidad 1)
+        ctypes.c_int,             # op (ShapeSet)
+    ]
+    xext.XShapeCombineMask.restype = ctypes.c_int
+    return xext
 
 
 class X11Backend(Backend):
@@ -79,6 +115,7 @@ class X11Backend(Backend):
     def __init__(self, window):
         super().__init__(window)
         self._xlib = _load_xlib()
+        self._xext = _load_xext()
         self._dpy = None
         self.pending_move = None  # (x, y, width, height) o None
 
@@ -153,6 +190,30 @@ class X11Backend(Backend):
         win = ctypes.c_ulong(xid)
         self._xlib.XMoveWindow(dpy, win, int(x), int(y))
         self._xlib.XResizeWindow(dpy, win, int(width), int(height))
+        self._xlib.XFlush(dpy)
+
+    def set_shape_mask(self, width, height, data):
+        """Recorta la forma VISIBLE de la ventana (XShape ShapeBounding).
+
+        `data` es un bitmap 1-bit (LSB primero, filas a múltiplo de byte) del
+        tamaño de la ventana: 1 = píxel visible. Es el sustituto de la
+        transparencia por CSS, que en GNOME/XWayland no funciona: sin máscara,
+        la ventana se ve como una franja blanca opaca a todo lo ancho. La
+        máscara se copia en el servidor, así que el pixmap se libera enseguida.
+        """
+        if self._xext is None or self._xlib is None:
+            return
+        dpy = self._display()
+        xid = self._xid()
+        if dpy is None or xid is None:
+            return
+        pixmap = self._xlib.XCreateBitmapFromData(
+            dpy, xid, data, int(width), int(height))
+        if not pixmap:
+            return
+        self._xext.XShapeCombineMask(
+            dpy, xid, _SHAPE_BOUNDING, 0, 0, pixmap, _SHAPE_SET)
+        self._xlib.XFreePixmap(dpy, pixmap)
         self._xlib.XFlush(dpy)
 
     def cleanup(self):
