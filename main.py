@@ -216,6 +216,7 @@ class Mascota:
         self._ciclos_pomodoro_vistos = 0
         # Redibujado y frecuencia adaptativa
         self._firma_previa = None     # firma visual del último frame pintado
+        self._css_provider = None    # proveedor CSS (¡guardar la referencia!)
         self._frame_cache = None      # frame elegido en este tick
         self._x_previo = None         # x del tick anterior (¿se mueve?)
         self._fps_candidato = None
@@ -410,13 +411,19 @@ class Mascota:
         # XWayland (GNOME + --x11) el área de dibujo puede quedarse con el
         # fondo opaco del tema y verse como una franja blanca a todo lo ancho.
         # Se cubre también el DrawingArea hijo.
-        css = (b"window { background-color: transparent; }\n"
+        #
+        # OJO: el proveedor DEBE guardarse como atributo de la instancia.
+        # Como variable local, Python lo libera al salir de este método y
+        # los estilos dejan de aplicarse: con el proveedor perdido, en X11
+        # se veía la franja blanca y en Wayland nativo una caja negra, o sea
+        # que el fondo transparente no estaba pegando en ningún backend.
+        css = (b"window, window.background { background-color: transparent; }\n"
                b"window drawingarea { background-color: transparent; }")
-        provider = Gtk.CssProvider()
-        provider.load_from_data(css)
+        self._css_provider = Gtk.CssProvider()
+        self._css_provider.load_from_data(css)
         display = Gdk.Display.get_default()
         Gtk.StyleContext.add_provider_for_display(
-            display, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
+            display, self._css_provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
         )
 
     def _reset_sprite(self):
