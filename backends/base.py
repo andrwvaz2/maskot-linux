@@ -62,5 +62,13 @@ class Backend:
                 )
         surface.set_input_region(region)
 
+    def set_shape_mask(self, width, height, data):
+        """Recorta la forma VISIBLE de la ventana a un bitmap 1-bit.
+
+        `data` es un bitmap (LSB primero, filas a múltiplo de byte) del tamaño
+        de la ventana: 1 = píxel visible. Solo X11 lo implementa (XShape
+        ShapeBounding); en otros backends no hace nada.
+        """
+
     def cleanup(self):
         """Libera recursos si hace falta (p. ej. cierra conexiones X11)."""
