@@ -36,6 +36,8 @@ import time
 
 import gi
 
+import cairo  # noqa: E402  (limpiar el fondo con OPERATOR_SOURCE, ver _draw_scene)
+
 gi.require_version("Gtk", "4.0")
 gi.require_version("Gdk", "4.0")
 from gi.repository import Gdk, GLib, Gtk  # noqa: E402
@@ -404,7 +406,12 @@ class Mascota:
         self.backend.pending_move = (x, y, geo.width, height)
 
     def _apply_transparent_css(self):
-        css = b"window { background-color: transparent; }"
+        # El fondo transparente no puede depender solo de la ventana: en
+        # XWayland (GNOME + --x11) el área de dibujo puede quedarse con el
+        # fondo opaco del tema y verse como una franja blanca a todo lo ancho.
+        # Se cubre también el DrawingArea hijo.
+        css = (b"window { background-color: transparent; }\n"
+               b"window drawingarea { background-color: transparent; }")
         provider = Gtk.CssProvider()
         provider.load_from_data(css)
         display = Gdk.Display.get_default()
@@ -552,6 +559,15 @@ class Mascota:
         self._draw_scene(cr, width)
 
     def _draw_scene(self, cr, width):
+        # 0) Limpiar toda la superficie a transparente antes de dibujar.
+        # Sin esto, en XWayland el fondo puede quedarse con el color opaco
+        # del tema (franja blanca a todo lo ancho) aunque el CSS diga
+        # `transparent`: el área solo dibujaba el sprite y los objetos.
+        cr.set_source_rgba(0, 0, 0, 0)
+        cr.set_operator(cairo.OPERATOR_SOURCE)
+        cr.paint()
+        cr.set_operator(cairo.OPERATOR_OVER)
+
         # 1) Objetos colocados por la rutina (banca, libro, taza, portátil).
         for nombre, (ox, oy) in self.motor.objetos.items():
             objetos.dibujar(cr, nombre, ox, oy, self.scale)
