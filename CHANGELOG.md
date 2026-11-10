@@ -52,6 +52,22 @@
   `ext-idle-notify-v1` en Wayland; si no está, cae al de antes. X11 no
   cambia. KDE sigue pendiente.
 
+### Ventana en X11/XWayland (GNOME)
+
+- **Franja blanca en GNOME, corregida:** en GNOME Wayland (ruta X11/XWayland
+  del instalador) la mascota se veía sobre una franja blanca opaca a todo lo
+  ancho. La transparencia por CSS (`background-color: transparent`, más
+  limpiar la superficie a transparente) no funciona en ese entorno: ni en
+  una ventana mínima (caja blanca en XWayland, caja negra en Wayland
+  nativo). El arreglo es recortar la ventana con **XShape
+  (`ShapeBounding`)** a los píxeles realmente dibujados — sprite (grilla
+  del frame, con espejo), objetos de la rutina y globo (cuerpo redondeado +
+  rabito, sin la sombra) — con la máscara reconstruida solo cuando cambia
+  lo que se ve o el tamaño de la ventana. Nuevo `set_shape_mask` en
+  `backends/x11.py` (vía ctypes sobre `libXext`); en Wayland es un no-op.
+  Verificado en Fedora GNOME: Tux flota sin franja y la forma lo sigue al
+  caminar y al cambiar de rutina.
+
 ### Docs
 
 - README actualizado a v0.3.0-beta Fase 3: 10 personajes, 14 rutinas,

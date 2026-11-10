@@ -390,7 +390,7 @@ select_wm_interactive() {
     echo -e "  [3] Sway/River  ${YELLOW}[No probada]${NC}  (Wayland wlroots: reglas floating/sticky)"
     echo -e "  [4] i3wm        ${YELLOW}[No probada]${NC}  (X11 tiling: floating & sticky)"
     echo -e "  [5] bspwm       ${YELLOW}[No probada]${NC}  (X11 tiling: regla bspc floating/border)"
-    echo -e "  [6] GNOME       ${YELLOW}[No probada]${NC}  (Wayland / X11: lanzador adaptativo XWayland)"
+    echo -e "  [6] GNOME       ${GREEN}[Verificado]${NC}  (Wayland / X11: lanzador adaptativo XWayland)"
     echo -e "  [7] KDE Plasma  ${YELLOW}[No probada]${NC}  (Wayland / X11: soporte KWin nativo)"
     echo -e "  [8] XFCE / MATE ${YELLOW}[No probada]${NC}  (X11 tradicional: dock EWMH estándar)"
     echo -e "  [9] Genérico    (Sin reglas específicas)"
@@ -641,7 +641,7 @@ bspc rule -a Mascota state=floating sticky=on border=off focus=off"
 }
 
 setup_gnome() {
-    log_info "Configuración para GNOME (entorno no probado)."
+    log_info "Configuración para GNOME (verificado en Fedora GNOME por la ruta XWayland)."
     log_warn "Mutter (GNOME Wayland) no incluye protocolo layer-shell por defecto."
     log_info "El lanzador de Maskot aplicará automáticamente el modo compatible XWayland (--x11)."
 }
@@ -683,7 +683,9 @@ install_system_files() {
 # Maskot CLI Wrapper generado automáticamente
 EXTRA_ARGS=()
 
-# En GNOME Wayland, forzar --x11 para transparencia y anclaje dock
+# En GNOME Wayland, forzar --x11 para anclaje dock (la ventana se recorta con
+# XShape a los píxeles dibujados: la transparencia por CSS no funciona en
+# GNOME/XWayland y se veía como una franja blanca a todo lo ancho)
 if [ "\${XDG_CURRENT_DESKTOP:-}" = "GNOME" ] && [ "\${XDG_SESSION_TYPE:-}" = "wayland" ]; then
     has_x11=0
     for arg in "\$@"; do
