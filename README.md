@@ -20,7 +20,7 @@
 │  ▶ MASKOT v0.3.0-beta [SYSTEM READY]                                   │
 │                                                                        │
 │  "Un compañero virtual en pixel art para tu escritorio Linux.          │
-│   Flota con transparencia total, permite clicks a través de su cuerpo, │
+│   Flota sin fondo visible, permite clicks a través de su cuerpo,       │
 │   toma siestas a 5 FPS y te acompaña con Pomodoro mientras programas." │
 └────────────────────────────────────────────────────────────────────────┘
 ```
@@ -181,13 +181,13 @@ Las preferencias se almacenan automáticamente en `~/.config/mascota/prefs.json`
 
 ## ⚡ Instalación Rápida & Configurador Multi-WM
 
-Maskot incluye un instalador interactivo [install.sh](file:///home/andrw/mascota/install.sh) que detecta automáticamente tu gestor de paquetes, comprueba dependencias y permite inyectar reglas de ventana para tu compositor o entorno.
+Maskot incluye un instalador interactivo [install.sh](install.sh) que detecta automáticamente tu gestor de paquetes, comprueba dependencias y permite inyectar reglas de ventana para tu compositor o entorno.
 
 > [!WARNING]
 > **Estado de compatibilidad por entorno:**
 > - **niri (+ XWayland):** 🟢 **Probado** activamente en el entorno de desarrollo.
 > - **GNOME (instalado con `install.sh`):** 🟢 **Verificado en Fedora GNOME**: funciona por la ruta **X11/XWayland**, porque el lanzador instalado fuerza `--x11` en GNOME+Wayland. La mascota flota sin la franja blanca: la ventana se recorta con XShape a los píxeles dibujados (la transparencia por CSS no funciona en ese entorno). Sin ícono de bandeja salvo que instales la extensión *AppIndicator and KStatusNotifierItem Support*.
-> - **GNOME ( `./run.sh` directo, sin `--x11`):** ⚠️ **No probada**: cae al fallback nativo (ventana normal de Wayland, sin anclar).
+> - **GNOME ( `./run.sh` directo, sin `--x11`):** 🟡 **Probada (caja negra)**: cae al fallback nativo (ventana normal de Wayland, sin anclar y sin transparencia: se ve una caja negra opaca con el sprite dentro).
 > - **Hyprland, Sway, i3, bspwm, KDE, XFCE:** ⚠️ **No probadas**.
 > El instalador **nunca aplicará reglas en silencio ni modificará tu configuración sin tu permiso expreso**: te mostrará la regla propuesta y te preguntará `¿aplicar esta regla a tu config? [s/N]` (por defecto **No**). Para paquetes del sistema, también te solicitará confirmación (`[s/N]`).
 
@@ -217,15 +217,15 @@ También puedes ejecutarlo de manera directa para tu entorno específico o de fo
 # 1. Modo simulación (dry-run):
 ./install.sh --dry-run         # Muestra qué se escribiría sin modificar archivos
 
-# 2. Entorno probado y verificado:
+# 2. Entornos probados y verificados:
 ./install.sh --wm niri         # [Probado] Aplica regla anti focus-ring lavanda en niri
+./install.sh --wm gnome        # [Verificado] Lanzador compatible con XWayland (--x11)
 
 # 3. Entornos NO PROBADOS (muestran la regla y piden confirmación [s/N] antes de escribir):
 ./install.sh --wm hyprland     # [No probada] Pregunta antes de escribir en hyprland.conf
 ./install.sh --wm sway         # [No probada] Pregunta antes de escribir en sway/config
 ./install.sh --wm i3           # [No probada] Pregunta antes de escribir en i3/config
 ./install.sh --wm bspwm        # [No probada] Pregunta antes de escribir en bspwmrc
-./install.sh --wm gnome        # [No probada] Lanzador compatible con XWayland (--x11)
 ./install.sh --wm kde          # [No probada] Integración con KWin y bandeja del sistema
 ./install.sh --wm xfce         # [No probada] Soporte dock EWMH tradicional
 ./install.sh --wm generic      # Configuración genérica sin reglas de compositor
@@ -241,6 +241,7 @@ También puedes ejecutarlo de manera directa para tu entorno específico o de fo
 2. 📦 **Dependencias:** Comprueba paquetes según tu distro (`pacman`, `apt`, `dnf`, `zypper`). Si faltan dependencias, te muestra el comando y solicita confirmación interactiva (`[s/N]`, nunca en silencio).
 3. 🪟 **Reglas de WM:**
    - En **niri** *(probado)*: Aplica la regla `focus-ring { off; }` y `open-focused false`.
+   - En **GNOME** *(verificado)*: El lanzador fuerza `--x11` (XWayland); la ventana se recorta con XShape, sin franja blanca.
    - En **Hyprland, Sway, i3, bspwm** *(no probadas)*: Muestra la regla propuesta y te pide confirmación `¿aplicar esta regla a tu config? [s/N]` antes de tocar el archivo, generando un respaldo `.bak` previo si confirmas.
 4. 🚀 **Comando Global:** Instala `maskot` en `~/.local/bin/maskot` para lanzarlo desde cualquier terminal.
 5. 🎨 **Lanzador de Escritorio:** Instala el archivo `maskot.desktop` y el icono pixel art oficial en formato SVG.
@@ -250,7 +251,7 @@ También puedes ejecutarlo de manera directa para tu entorno específico o de fo
 
 ## 🚀 Ejecución Manual
 
-Si prefieres ejecutar Maskot sin instalarlo en el sistema, puedes usar directamente el lanzador [run.sh](file:///home/andrw/mascota/run.sh):
+Si prefieres ejecutar Maskot sin instalarlo en el sistema, puedes usar directamente el lanzador [run.sh](run.sh):
 
 ```bash
 # 1. Ejecución estándar (autodetecta Wayland o X11)
@@ -327,7 +328,7 @@ curl -s -X POST -d '{"nombre": "pancito"}' 127.0.0.1:7777/personaje
 
 ## 🗺️ Matriz de Compatibilidad
 
-Verificado internamente en: **CachyOS + niri (Wayland) + XWayland**.
+Verificado internamente en: **CachyOS + niri (Wayland) + XWayland** y **Fedora + GNOME (XWayland)**.
 
 Leyenda de la columna *Estado*:
 
@@ -343,7 +344,7 @@ Leyenda de la columna *Estado*:
 | **Sway / River** (Wayland) | ⚠️ No probada | Reglas `floating` / `sticky` propuestas; requiere confirmación interactiva `[s/N]`. |
 | **i3wm / bspwm** (X11) | ⚠️ No probada | Reglas de flotación propuestas; requiere confirmación interactiva `[s/N]`. |
 | **GNOME Wayland** vía instalador (`maskot` de `install.sh`) | 🟢 Verificado | Verificado en Fedora GNOME: **funciona** por la ruta **X11/XWayland**, no por el fallback nativo. El lanzador que genera el instalador **añade `--x11` a propósito** en GNOME+Wayland (`install.sh`, bloque *“En GNOME Wayland, forzar --x11…”*), así que `main.py` arranca con el backend X11 (`detect_backend` → `forzado con --x11`) y usa EWMH/`XMoveWindow` sobre XWayland; la barra queda anclada abajo del monitor. La mascota flota **sin la franja blanca**: la transparencia por CSS no funciona en ese entorno (ni en una ventana mínima), así que la ventana se recorta con XShape (`ShapeBounding`) a los píxeles dibujados — sprite, objetos y globo — y la máscara se actualiza cuando cambia el frame. Dos **limitaciones confirmadas** en ese entorno: la **pausa activa queda desactivada** (XWayland no expone `MIT-SCREEN-SAVER`) y el **ícono de bandeja no aparece**, porque GNOME no trae `StatusNotifierWatcher`: hace falta instalar la extensión *AppIndicator and KStatusNotifierItem Support* de GNOME Shell. |
-| **GNOME Wayland** con `./run.sh` directo, sin `--x11` | ⚠️ No probada | Ruta **distinta** a la anterior y sin ningún reporte: el backend se queda en `wayland`, `gtk4-layer-shell` no puede inicializarse (GNOME no habla `zwlr_layer_shell_v1`) y la app cae al **fallback nativo: una ventana normal de Wayland, sin anclar y sin estar encima**. El click-through seguiría funcionando (`wl_region`), pero la ventana no queda abajo del todo. Si alguien la prueba, documéntelo aquí. |
+| **GNOME Wayland** con `./run.sh` directo, sin `--x11` | 🟡 Probada (caja negra) | Ruta **distinta** a la anterior: el backend se queda en `wayland`, `gtk4-layer-shell` no puede inicializarse (GNOME no habla `zwlr_layer_shell_v1`) y la app cae al **fallback nativo: una ventana normal de Wayland, sin anclar y sin estar encima**. Probada en Fedora GNOME: se ve una **caja negra opaca** flotante con el sprite dentro (la transparencia por CSS tampoco funciona ahí). El click-through seguiría funcionando (`wl_region`), pero la ventana no queda abajo del todo. |
 | **KDE Plasma** (Wayland / X11) | ⚠️ No probada | Integración KWin propuesta sin inyección invasiva. |
 | **XFCE** (X11) | 📌 Reporte de comunidad | Alguien reporta que **corre correctamente**. **Sin detalles técnicos ni verificación interna, y sin referencia enlazada**: no consta versión de XFCE, versión de Maskot ni si usó sesión X11 nativa o `--x11`. No tomar como cobertura probada. |
 | **MATE** (X11) | ⚠️ No probada | Integración dock EWMH tradicional propuesta. |
@@ -551,9 +552,9 @@ mascota/
 │   └── maskot.desktop   # Lanzador estándar XDG para menús y autostart
 └── backends/
     ├── __init__.py      # Selector dinámico de backend
-    ├── base.py          # Regiones de click-through (set_input_region) con GDK
+    ├── base.py          # Regiones de click-through (set_input_region) y forma visible (set_shape_mask, no-op) con GDK
     ├── wayland.py       # Integración con gtk4-layer-shell y modo fallback
-    └── x11.py           # Ventana EWMH (DOCK/ABOVE) y posicionamiento XLib
+    └── x11.py           # Ventana EWMH (DOCK/ABOVE), posicionamiento XLib y recorte XShape
 ```
 
 ---
